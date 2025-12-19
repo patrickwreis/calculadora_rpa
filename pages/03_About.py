@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """About Page"""
 import streamlit as st
-from src.ui.styles import apply_custom_styles
+
 from config import APP_NAME, APP_VERSION, APP_DESCRIPTION
 
 # Page config
@@ -12,8 +12,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Apply custom styles
-apply_custom_styles()
+
 
 # Page header
 st.title("ℹ️ Sobre a Aplicação")

@@ -3,8 +3,7 @@
 import streamlit as st
 import pandas as pd
 from src.database import DatabaseManager
-from src.ui.styles import apply_custom_styles
-from src.ui.components import header
+from src.ui.components import page_header
 from src.calculator.utils import format_currency, format_percentage, format_months
 from src.analysis.ranking import (
     rank_by_roi,
@@ -21,14 +20,13 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Apply custom styles
-apply_custom_styles()
+
 
 # Initialize database
 db_manager = DatabaseManager()
 
 # Page header
-header("Histórico de Cálculos", "Visualize, classifique e gerencie todos os seus cálculos de ROI")
+page_header("Histórico de Cálculos", "Visualize, classifique e gerencie todos os seus cálculos de ROI")
 
 # Get calculations
 calculations = db_manager.get_all_calculations()

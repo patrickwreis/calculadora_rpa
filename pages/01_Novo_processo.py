@@ -3,8 +3,7 @@
 import streamlit as st
 from src.calculator import ROICalculator, ROIInput
 from src.calculator.utils import format_currency, format_percentage, format_months, validate_input
-from src.ui.styles import apply_custom_styles
-from src.ui.components import header
+from src.ui.components import page_header
 from src.database import DatabaseManager
 from config import APP_NAME, APP_DESCRIPTION
 import datetime
@@ -17,8 +16,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Apply custom styles
-apply_custom_styles()
+
 
 # Add custom CSS for green button and professional styling
 st.markdown("""
