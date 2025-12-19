@@ -12,3 +12,4 @@ reportlab
 pytest
 python-multipart
 plotly
+streamlit-aggrid==1.2.1

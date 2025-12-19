@@ -525,13 +525,35 @@ if st.session_state.show_results and st.session_state.calculator_results:
                 total_monthly_savings = result.monthly_savings + fines_avoided + sql_savings
                 
                 calculation_data = {
+                    # Basic Information
                     "process_name": roi_input.process_name,
-                    "current_time_per_month": roi_input.current_time_per_month,
+                    "department": st.session_state.calculator_results.get("department", ""),
+                    
+                    # Process Characteristics
                     "people_involved": roi_input.people_involved,
+                    "current_time_per_month": roi_input.current_time_per_month,
                     "hourly_rate": roi_input.hourly_rate,
-                    "rpa_implementation_cost": roi_input.rpa_implementation_cost,
-                    "rpa_monthly_cost": roi_input.rpa_monthly_cost,
+                    "complexity": st.session_state.calculator_results.get("complexity", "Média"),
+                    "systems_quantity": st.session_state.calculator_results.get("systems_quantity", 1),
+                    "daily_transactions": st.session_state.calculator_results.get("daily_transactions", 100),
+                    "error_rate": st.session_state.calculator_results.get("error_rate", 0),
+                    "exception_rate": st.session_state.calculator_results.get("exception_rate", 0),
+                    
+                    # Automation Settings
                     "expected_automation_percentage": roi_input.expected_automation_percentage,
+                    
+                    # Implementation Costs
+                    "rpa_implementation_cost": roi_input.rpa_implementation_cost,
+                    "maintenance_percentage": st.session_state.calculator_results.get("maintenance_percentage", 10),
+                    "infra_license_cost": st.session_state.calculator_results.get("infra_license_cost", 0),
+                    "other_costs": st.session_state.calculator_results.get("other_costs", 0),
+                    "rpa_monthly_cost": roi_input.rpa_monthly_cost,
+                    
+                    # Additional Benefits
+                    "fines_avoided": fines_avoided,
+                    "sql_savings": sql_savings,
+                    
+                    # Calculated Results
                     "monthly_savings": total_monthly_savings,
                     "annual_savings": total_monthly_savings * 12,
                     "payback_period_months": roi_input.rpa_implementation_cost / total_monthly_savings if total_monthly_savings > 0 else 0,
