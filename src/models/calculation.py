@@ -7,6 +7,7 @@ from typing import Optional
 
 class Calculation(SQLModel, table=True):
     """Model for storing calculation history"""
+    __table_args__ = {"extend_existing": True}
     id: Optional[int] = Field(default=None, primary_key=True)
     process_name: str
     current_time_per_month: float

@@ -43,6 +43,21 @@ class DatabaseManager:
             calculation = session.exec(statement).first()
         return calculation
     
+    def update_calculation(self, calc_id: int, calculation_data: dict) -> Optional[Calculation]:
+        """Update a calculation"""
+        with Session(self.engine) as session:
+            statement = select(Calculation).where(Calculation.id == calc_id)
+            calculation = session.exec(statement).first()
+            if calculation:
+                for key, value in calculation_data.items():
+                    if hasattr(calculation, key):
+                        setattr(calculation, key, value)
+                session.add(calculation)
+                session.commit()
+                session.refresh(calculation)
+                return calculation
+        return None
+    
     def delete_calculation(self, calc_id: int) -> bool:
         """Delete a calculation"""
         with Session(self.engine) as session:
