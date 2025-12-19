@@ -18,41 +18,6 @@ st.set_page_config(
 
 
 
-# Add custom CSS for green button and professional styling
-st.markdown("""
-<style>
-/* Green button for calculate */
-.stFormSubmitButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
-    color: white !important;
-    font-weight: bold !important;
-}
-
-.stFormSubmitButton > button[kind="primary"]:hover {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-}
-
-/* Professional styling for results section */
-.results-container {
-    background: #f9fafb;
-    border-radius: 12px;
-    padding: 30px;
-    margin-top: 20px;
-}
-
-/* Improve spacing */
-h2 {
-    margin-top: 30px !important;
-    margin-bottom: 20px !important;
-}
-
-h3 {
-    color: #1f2937 !important;
-    margin-top: 20px !important;
-    margin-bottom: 15px !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 # Initialize session state
 if "calculator_results" not in st.session_state:
@@ -487,7 +452,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
     col1, col2 = st.columns(2, gap="large")
     
     with col1:
-        st.markdown('<div class="section-title">Economia (Benefício Financeiro)</div>', unsafe_allow_html=True)
+        st.subheader("Economia (Benefício Financeiro)")
         eco_col1, eco_col2, eco_col3 = st.columns(3, gap="small")
         
         with eco_col1:
@@ -521,7 +486,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
             """, unsafe_allow_html=True)
     
     with col2:
-        st.markdown('<div class="section-title">Retorno sobre Investimento (ROI %)</div>', unsafe_allow_html=True)
+        st.subheader("Retorno sobre Investimento (ROI %)")
         roi_col1, roi_col2, roi_col3 = st.columns(3, gap="small")
         
         with roi_col1:
@@ -558,7 +523,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
             """, unsafe_allow_html=True)
     
     # Payback and Key Metrics
-    st.markdown('<div class="dashboard-section"></div>', unsafe_allow_html=True)
+
     
     payback_col1, payback_col2, payback_col3 = st.columns(3, gap="small")
     
@@ -593,7 +558,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
         </div>
         """, unsafe_allow_html=True)
     
-    st.markdown('</div>', unsafe_allow_html=True)  # Close dashboard container
+
     
     st.divider()
     
