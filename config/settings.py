@@ -17,12 +17,6 @@ APP_NAME = "ROI RPA Calculator"
 APP_VERSION = "1.0.0"
 APP_DESCRIPTION = "Professional tool for analyzing ROI of RPA automations"
 
-# UI Settings
-THEME_PRIMARY_COLOR = "#42b885"
-THEME_PRIMARY_DARK = "#2d9d6f"
-THEME_SECONDARY_COLOR = "#8b5cf6"
-THEME_DARK_BG = "#0a0e27"
-THEME_DARK_LIGHT = "#1a1f3a"
 
 # Database
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/calculator.db")

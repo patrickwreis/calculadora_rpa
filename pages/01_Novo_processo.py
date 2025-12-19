@@ -344,17 +344,7 @@ with st.form("roi_form"):
 # Display results if calculated
 if st.session_state.show_results and st.session_state.calculator_results:
     st.divider()
-    
-    # Results header with styling
-    st.markdown("""
-    <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); 
-                padding: 20px; 
-                border-radius: 10px; 
-                margin-bottom: 20px;
-                color: white;">
-        <h2 style="margin: 0; color: white; text-align: center;">✓ Análise de ROI Concluída</h2>
-    </div>
-    """, unsafe_allow_html=True)
+    st.success("✓ Análise de ROI Concluída")
     
     result = st.session_state.calculator_results["result"]
     roi_input = st.session_state.calculator_results["input"]
@@ -373,192 +363,38 @@ if st.session_state.show_results and st.session_state.calculator_results:
     economia_2years = total_monthly_savings * 24 - roi_input.rpa_implementation_cost
     economia_5years = total_monthly_savings * 60 - roi_input.rpa_implementation_cost
     
-    # Dashboard Container
-    st.markdown("""
-    <style>
-    .dashboard-container {
-        background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
-        border-radius: 15px;
-        padding: 30px;
-        margin: 20px 0;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        border: 2px solid #E2E8F0;
-    }
-    .dashboard-title {
-        text-align: center;
-        color: #1F2937;
-        font-size: 22px;
-        font-weight: bold;
-        margin-bottom: 30px;
-    }
-    .dashboard-section {
-        margin-top: 0;
-        padding-top: 0;
-        border-top: none;
-    }
-    .kpi-card {
-        border-radius: 12px;
-        padding: 22px;
-        text-align: center;
-        color: white;
-        font-weight: bold;
-        margin-bottom: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-        min-height: 140px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
-    .kpi-label {
-        font-size: 11px;
-        opacity: 0.92;
-        margin-bottom: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .kpi-value {
-        font-size: 28px;
-        margin: 8px 0;
-        font-weight: 900;
-    }
-    .kpi-indicator {
-        font-size: 24px;
-        margin-top: 5px;
-    }
-    .kpi-green { background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
-    .kpi-blue { background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); }
-    .kpi-red { background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); }
-    .kpi-purple { background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%); }
-    .kpi-orange { background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); }
-    .kpi-cyan { background: linear-gradient(135deg, #06B6D4 0%, #0891B2 100%); }
-    .kpi-pink { background: linear-gradient(135deg, #EC4899 0%, #DB2777 100%); }
-    .section-title {
-        color: #1F2937;
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 12px;
-        padding-left: 12px;
-        border-left: 4px solid #3B82F6;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Start Dashboard
-    st.markdown('<div class="dashboard-container">', unsafe_allow_html=True)
-    
-    st.markdown(f'<div class="dashboard-title">📊 Dashboard de ROI - {roi_input.process_name}</div>', unsafe_allow_html=True)
+    # Results Dashboard
+    st.divider()
+    st.subheader(f"📊 Resultados - {roi_input.process_name}")
     
     # KPIs Section
-    col1, col2 = st.columns(2, gap="large")
+    st.subheader("💰 Economia (1, 2 e 5 anos)")
+    eco_col1, eco_col2, eco_col3 = st.columns(3)
+    with eco_col1:
+        st.metric("1 Ano", format_currency(economia_1year))
+    with eco_col2:
+        st.metric("2 Anos", format_currency(economia_2years))
+    with eco_col3:
+        st.metric("5 Anos", format_currency(economia_5years))
     
-    with col1:
-        st.subheader("Economia (Benefício Financeiro)")
-        eco_col1, eco_col2, eco_col3 = st.columns(3, gap="small")
-        
-        with eco_col1:
-            eco_indicator = "✅" if economia_1year > 0 else "⚠️"
-            st.markdown(f"""
-            <div class="kpi-card kpi-blue">
-                <div class="kpi-label">1 Ano</div>
-                <div class="kpi-value">{format_currency(economia_1year)}</div>
-                <div class="kpi-indicator">{eco_indicator}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with eco_col2:
-            eco2_indicator = "✅" if economia_2years > 0 else "⚠️"
-            st.markdown(f"""
-            <div class="kpi-card kpi-green">
-                <div class="kpi-label">2 Anos</div>
-                <div class="kpi-value">{format_currency(economia_2years)}</div>
-                <div class="kpi-indicator">{eco2_indicator}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with eco_col3:
-            eco5_indicator = "✅" if economia_5years > 0 else "⚠️"
-            st.markdown(f"""
-            <div class="kpi-card kpi-purple">
-                <div class="kpi-label">5 Anos</div>
-                <div class="kpi-value">{format_currency(economia_5years)}</div>
-                <div class="kpi-indicator">{eco5_indicator}</div>
-            </div>
-            """, unsafe_allow_html=True)
+    st.subheader("📈 ROI (1, 2 e 5 anos)")
+    roi_col1, roi_col2, roi_col3 = st.columns(3)
+    with roi_col1:
+        st.metric("1 Ano", f"{roi_1year:.1f}%")
+    with roi_col2:
+        st.metric("2 Anos", f"{roi_2years:.1f}%")
+    with roi_col3:
+        st.metric("5 Anos", f"{roi_5years:.1f}%")
     
-    with col2:
-        st.subheader("Retorno sobre Investimento (ROI %)")
-        roi_col1, roi_col2, roi_col3 = st.columns(3, gap="small")
-        
-        with roi_col1:
-            roi_color_1 = "kpi-green" if roi_1year > 0 else "kpi-red"
-            roi_indicator_1 = "✅" if roi_1year > 100 else "⚠️" if roi_1year > 0 else "❌"
-            st.markdown(f"""
-            <div class="kpi-card {roi_color_1}">
-                <div class="kpi-label">1 Ano</div>
-                <div class="kpi-value">{roi_1year:.1f}%</div>
-                <div class="kpi-indicator">{roi_indicator_1}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with roi_col2:
-            roi_color_2 = "kpi-green" if roi_2years > 0 else "kpi-red"
-            roi_indicator_2 = "✅" if roi_2years > 100 else "⚠️" if roi_2years > 0 else "❌"
-            st.markdown(f"""
-            <div class="kpi-card {roi_color_2}">
-                <div class="kpi-label">2 Anos</div>
-                <div class="kpi-value">{roi_2years:.1f}%</div>
-                <div class="kpi-indicator">{roi_indicator_2}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with roi_col3:
-            roi_color_5 = "kpi-green" if roi_5years > 0 else "kpi-red"
-            roi_indicator_5 = "✅" if roi_5years > 100 else "⚠️" if roi_5years > 0 else "❌"
-            st.markdown(f"""
-            <div class="kpi-card {roi_color_5}">
-                <div class="kpi-label">5 Anos</div>
-                <div class="kpi-value">{roi_5years:.1f}%</div>
-                <div class="kpi-indicator">{roi_indicator_5}</div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    # Payback and Key Metrics
-
-    
-    payback_col1, payback_col2, payback_col3 = st.columns(3, gap="small")
-    
+    st.subheader("⏱️ Payback e Economia Mensal")
+    payback_col1, payback_col2, payback_col3 = st.columns(3)
     with payback_col1:
-        payback_indicator = "✅" if result.payback_period_months < 12 else "⚠️"
-        st.markdown(f"""
-        <div class="kpi-card kpi-orange">
-            <div class="kpi-label">Payback</div>
-            <div class="kpi-value">{result.payback_period_months:.1f}m ({result.payback_period_months/12:.1f}a)</div>
-            <div class="kpi-indicator">{payback_indicator}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
+        st.metric("Payback", f"{result.payback_period_months:.1f}m")
     with payback_col2:
-        monthly_indicator = "✅" if total_monthly_savings > 0 else "❌"
-        st.markdown(f"""
-        <div class="kpi-card kpi-cyan">
-            <div class="kpi-label">Economia Mensal</div>
-            <div class="kpi-value">{format_currency(total_monthly_savings)}</div>
-            <div class="kpi-indicator">{monthly_indicator}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
+        st.metric("Economia Mensal", format_currency(total_monthly_savings))
     with payback_col3:
         capacity_hours = result.automation_capacity
-        capacity_indicator = "✅" if capacity_hours > 0 else "❌"
-        st.markdown(f"""
-        <div class="kpi-card kpi-pink">
-            <div class="kpi-label">Capacidade Liberada</div>
-            <div class="kpi-value">{capacity_hours:.0f}h/mês</div>
-            <div class="kpi-indicator">{capacity_indicator}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-
+        st.metric("Capacidade Liberada", f"{capacity_hours:.0f}h/mês")
     
     st.divider()
     
@@ -566,11 +402,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("""
-        <div style="background: rgba(59, 130, 246, 0.1); padding: 15px; border-left: 4px solid #3B82F6; border-radius: 5px; margin-bottom: 15px;">
-            <h3 style="margin-top: 0; color: #3B82F6;">💳 Análise Financeira</h3>
-        </div>
-        """, unsafe_allow_html=True)
+        st.subheader("💳 Análise Financeira")
         
         current_monthly_cost = (
             roi_input.current_time_per_month * 
@@ -608,11 +440,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
             st.write(f"**{label}:** {value}")
     
     with col2:
-        st.markdown("""
-        <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-left: 4px solid #A855F7; border-radius: 5px; margin-bottom: 15px;">
-            <h3 style="margin-top: 0; color: #A855F7;">📊 Indicadores de ROI</h3>
-        </div>
-        """, unsafe_allow_html=True)
+        st.subheader("📊 Indicadores de ROI")
         
         # Recalculate payback with additional benefits
         total_monthly_savings = result.monthly_savings + fines_avoided + sql_savings
@@ -639,11 +467,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
     st.divider()
     
     # Process Details
-    st.markdown("""
-    <div style="background: rgba(34, 197, 94, 0.1); padding: 15px; border-left: 4px solid #22C55E; border-radius: 5px; margin-bottom: 15px;">
-        <h3 style="margin-top: 0; color: #22C55E;">🔧 Detalhes do Processo</h3>
-    </div>
-    """, unsafe_allow_html=True)
+    st.subheader("🔧 Detalhes do Processo")
     
     col1, col2, col3 = st.columns(3)
     
@@ -671,11 +495,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
     st.divider()
     
     # Implementation Details
-    st.markdown("""
-    <div style="background: rgba(249, 115, 22, 0.1); padding: 15px; border-left: 4px solid #F97316; border-radius: 5px; margin-bottom: 15px;">
-        <h3 style="margin-top: 0; color: #F97316;">⚙️ Detalhes de Implementação</h3>
-    </div>
-    """, unsafe_allow_html=True)
+    st.subheader("⚙️ Detalhes de Implementação")
     
     col1, col2 = st.columns(2)
     
@@ -693,11 +513,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
     
     # Save to database
     st.divider()
-    st.markdown("""
-    <div style="padding: 20px 0;">
-        <p style="text-align: center; color: #666; font-size: 14px;">💾 <strong>Salvar este cálculo na base de dados</strong></p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.write("💾 **Salvar este cálculo na base de dados**")
     
     col1, col2 = st.columns([1, 1])
     
