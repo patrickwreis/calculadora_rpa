@@ -243,9 +243,9 @@ def edit_process_modal():
             maintenance_percentage = st.number_input(
                 "Manutenção Anual (% do desenvolvimento)",
                 value=float(getattr(selected_calc, 'maintenance_percentage', 10)),
-                min_value=0,
-                max_value=100,
-                step=1
+                min_value=0.0,
+                max_value=100.0,
+                step=1.0
             )
         
         col1, col2 = st.columns(2)
