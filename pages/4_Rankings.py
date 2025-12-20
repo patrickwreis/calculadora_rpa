@@ -31,10 +31,13 @@ st.markdown("Veja quais processos têm melhor desempenho em ROI, Payback e Econo
 st.divider()
 
 # Get calculations
-calculations = db_manager.get_all_calculations()
+success, calculations, error_msg = db_manager.get_all_calculations()
 
-if not calculations:
-    st.info("📋 Nenhum cálculo salvo ainda. Comece criando um novo cálculo!")
+if not success or not calculations:
+    if error_msg:
+        st.error(f"❌ Erro ao carregar cálculos: {error_msg}")
+    else:
+        st.info("📋 Nenhum cálculo salvo ainda. Comece criando um novo cálculo!")
     st.stop()
 
 # ========== TOP 3 PODIUM ==========
