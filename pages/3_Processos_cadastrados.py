@@ -202,18 +202,18 @@ def edit_process_modal():
             error_rate = st.number_input(
                 "Taxa de Erro (%)",
                 value=float(getattr(selected_calc, 'error_rate', 0)),
-                min_value=0,
-                max_value=100,
-                step=1
+                min_value=0.0,
+                max_value=100.0,
+                step=1.0
             )
         
         with col2:
             exception_rate = st.number_input(
                 "Taxa de Exceção (%)",
                 value=float(getattr(selected_calc, 'exception_rate', 0)),
-                min_value=0,
-                max_value=100,
-                step=1
+                min_value=0.0,
+                max_value=100.0,
+                step=1.0
             )
         
         # Automação
