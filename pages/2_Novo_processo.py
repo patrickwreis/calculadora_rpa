@@ -588,9 +588,8 @@ if st.session_state.show_results and st.session_state.calculator_results:
                         st.rerun()
                     else:
                         st.error(f"❌ Erro ao salvar: {error_msg}")
-                st.success("✅ Cálculo salvo com sucesso! Veja o histórico na aba 'Histórico de Resultados'")
-            except Exception as e:
-                st.error(f"❌ Erro ao salvar: {str(e)}")
+                except Exception as e:
+                    st.error(f"❌ Erro ao salvar: {str(e)}")
     
     with col2:
         if st.button("Novo Cálculo", width="content"):
