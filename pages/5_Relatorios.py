@@ -9,16 +9,113 @@ import streamlit as st
 
 from src.calculator.utils import format_currency, format_percentage
 from src.database import DatabaseManager
+from src.export import ExportManager
 
 
 def load_data():
     """Load all calculations from database"""
     try:
         db_manager = DatabaseManager()
-        return db_manager.get_all_calculations()
+        success, calculations, error_msg = db_manager.get_all_calculations()
+        if success:
+            return calculations
+        else:
+            st.error(f"Erro ao carregar dados: {error_msg}")
+            return []
     except Exception as e:
         st.error(f"Erro ao carregar dados: {str(e)}")
         return []
+
+
+def create_export_section(calculations):
+    """Create section with PDF and Excel export buttons"""
+    if not calculations:
+        return
+    
+    st.divider()
+    st.subheader("📥 Exportar Relatórios")
+    
+    # Convert calculations to dictionaries for export
+    calc_dicts = [
+        {
+            'process_name': calc.process_name,
+            'department': calc.department or '—',
+            'complexity': calc.complexity or '—',
+            'people_involved': calc.people_involved or 0,
+            'systems_quantity': calc.systems_quantity or 0,
+            'daily_transactions': calc.daily_transactions or 0,
+            'hourly_rate': calc.hourly_rate or 0.0,
+            'current_time_per_month': calc.current_time_per_month or 0.0,
+            'rpa_implementation_cost': calc.rpa_implementation_cost or 0.0,
+            'rpa_monthly_cost': calc.rpa_monthly_cost or 0.0,
+            'maintenance_percentage': calc.maintenance_percentage or 0.0,
+            'infra_license_cost': calc.infra_license_cost or 0.0,
+            'other_costs': calc.other_costs or 0.0,
+            'monthly_savings': calc.monthly_savings or 0.0,
+            'annual_savings': calc.annual_savings or 0.0,
+            'roi_first_year': calc.roi_first_year or 0.0,
+            'roi_percentage_first_year': calc.roi_percentage_first_year or 0.0,
+            'payback_period_months': calc.payback_period_months or 0.0,
+        }
+        for calc in calculations
+    ]
+    
+    col1, col2, col3 = st.columns(3)
+    
+    # PDF Export
+    with col1:
+        with st.spinner("⏳ Gerando PDF..."):
+            success, pdf_buffer, error_msg = ExportManager.export_to_pdf(calc_dicts)
+        
+        if success:
+            st.download_button(
+                label="📄 Baixar PDF",
+                data=pdf_buffer,
+                file_name=f"relatorio_roi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                mime="application/pdf",
+                key="pdf_export"
+            )
+        else:
+            st.error(f"Erro ao gerar PDF: {error_msg}")
+    
+    # Excel Export
+    with col2:
+        with st.spinner("⏳ Gerando Excel..."):
+            success, excel_buffer, error_msg = ExportManager.export_to_excel(calc_dicts)
+        
+        if success:
+            st.download_button(
+                label="📊 Baixar Excel",
+                data=excel_buffer,
+                file_name=f"relatorio_roi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="excel_export"
+            )
+        else:
+            st.error(f"Erro ao gerar Excel: {error_msg}")
+    
+    # CSV Export
+    with col3:
+        df = pd.DataFrame([
+            {
+                "Processo": calc.process_name,
+                "Departamento": calc.department or "N/A",
+                "ROI Ano 1": calc.roi_percentage_first_year,
+                "Payback (meses)": calc.payback_period_months,
+                "Economia Anual": calc.annual_savings,
+            }
+            for calc in calculations
+        ])
+        
+        csv = df.to_csv(index=False, encoding='utf-8-sig')
+        st.download_button(
+            label="📋 Baixar CSV",
+            data=csv,
+            file_name=f"relatorio_roi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+            key="csv_export"
+        )
+
 
 
 def create_summary_report(calculations):
@@ -305,6 +402,9 @@ def main():
     with tab4:
         st.subheader("Timeline de Payback")
         create_timeline_report(calculations)
+    
+    # Export section
+    create_export_section(calculations)
 
 
 if __name__ == "__main__":
