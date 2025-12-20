@@ -234,7 +234,8 @@ class ExportManager:
             wb = Workbook()
             
             # Remove default sheet and create summary sheet
-            wb.remove(wb.active)
+            if wb.active is not None:
+                wb.remove(wb.active)
             summary_sheet = wb.create_sheet("Resumo", 0)
             
             # Configure summary sheet
