@@ -167,10 +167,17 @@ def edit_process_modal():
         col1, col2, col3 = st.columns(3)
         
         with col1:
+            # Normalize complexity value to handle both 'Media' and 'Média'
+            complexity_options = ["Baixa", "Média", "Alta"]
+            current_complexity = getattr(selected_calc, 'complexity', 'Média')
+            # Handle 'Media' (no accent) from database
+            if current_complexity == 'Media':
+                current_complexity = 'Média'
+            
             complexity = st.selectbox(
                 "Complexidade",
-                ["Baixa", "Média", "Alta"],
-                index=["Baixa", "Média", "Alta"].index(getattr(selected_calc, 'complexity', 'Média'))
+                complexity_options,
+                index=complexity_options.index(current_complexity) if current_complexity in complexity_options else 1
             )
         
         with col2:
