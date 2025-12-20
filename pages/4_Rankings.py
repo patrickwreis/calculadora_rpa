@@ -130,7 +130,7 @@ with tab1:
             hovermode="closest",
             margin=dict(l=200, r=20, t=40, b=20)
         )
-        st.plotly_chart(fig_roi, use_container_width=True)
+        st.plotly_chart(fig_roi)
     
     with col2:
         st.markdown("#### 🎯 Estatísticas de ROI")
@@ -173,7 +173,7 @@ with tab2:
             hovermode="closest",
             margin=dict(l=200, r=20, t=40, b=20)
         )
-        st.plotly_chart(fig_payback, use_container_width=True)
+        st.plotly_chart(fig_payback)
     
     with col2:
         st.markdown("#### ⏳ Estatísticas de Payback")
@@ -226,7 +226,7 @@ with tab3:
             hovermode="closest",
             margin=dict(l=200, r=20, t=40, b=20)
         )
-        st.plotly_chart(fig_savings, use_container_width=True)
+        st.plotly_chart(fig_savings)
     
     with col2:
         st.markdown("#### 💵 Estatísticas de Economia")
@@ -258,7 +258,6 @@ with tab4:
     
     st.dataframe(
         comparison_df,
-        use_container_width=True,
         hide_index=True,
         column_config={
             "Posição": st.column_config.NumberColumn(width="small"),
@@ -305,7 +304,7 @@ with tab4:
         margin=dict(l=60, r=20, t=60, b=60)
     )
     
-    st.plotly_chart(fig_scatter, use_container_width=True)
+    st.plotly_chart(fig_roi)
 
 st.divider()
 

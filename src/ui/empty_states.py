@@ -22,7 +22,7 @@ class EmptyStateManager:
         
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            if st.button("➕ Criar Primeiro Processo", use_container_width=True, key="empty_new_process"):
+            if st.button("➕ Criar Primeiro Processo", key="empty_new_process"):
                 st.switch_page("pages/2_Novo_processo.py")
     
     @staticmethod
@@ -55,7 +55,7 @@ class EmptyStateManager:
         
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            if st.button("➕ Criar Processo Agora", use_container_width=True, key="empty_new_from_reports"):
+            if st.button("➕ Criar Processo Agora", key="empty_new_from_reports"):
                 st.switch_page("pages/2_Novo_processo.py")
     
     @staticmethod
@@ -66,13 +66,13 @@ class EmptyStateManager:
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("🗑️ Sim, Deletar", key="confirm_delete", use_container_width=True):
+            if st.button("🗑️ Sim, Deletar", key="confirm_delete"):
                 if on_confirm:
                     on_confirm()
                 return True
         
         with col2:
-            if st.button("❌ Cancelar", key="cancel_delete", use_container_width=True):
+            if st.button("❌ Cancelar", key="cancel_delete"):
                 if on_cancel:
                     on_cancel()
                 return False

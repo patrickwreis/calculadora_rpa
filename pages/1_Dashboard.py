@@ -140,7 +140,7 @@ with chart_col1:
         hovermode="closest",
         margin=dict(l=150, r=20, t=40, b=20)
     )
-    st.plotly_chart(fig_roi, use_container_width=True)
+    st.plotly_chart(fig_roi)
 
 # Chart 2: Payback Timeline
 with chart_col2:
@@ -164,7 +164,7 @@ with chart_col2:
         hovermode="closest",
         margin=dict(l=150, r=20, t=40, b=20)
     )
-    st.plotly_chart(fig_payback, use_container_width=True)
+    st.plotly_chart(fig_payback)
 
 st.divider()
 
@@ -195,7 +195,7 @@ with savings_col1:
         hovermode="x unified",
         margin=dict(b=80)
     )
-    st.plotly_chart(fig_savings, use_container_width=True)
+    st.plotly_chart(fig_savings)
 
 with savings_col2:
     # Investment vs Savings
@@ -223,7 +223,7 @@ with savings_col2:
         hovermode="closest",
         margin=dict(l=60, r=20, t=40, b=60)
     )
-    st.plotly_chart(fig_invest, use_container_width=True)
+    st.plotly_chart(fig_invest)
 
 st.divider()
 
@@ -302,7 +302,6 @@ df_detailed = pd.DataFrame(detailed_data)
 # Display with styling
 st.dataframe(
     df_detailed,
-    use_container_width=True,
     hide_index=True,
     column_config={
         "Processo": st.column_config.TextColumn(width="large"),
@@ -341,7 +340,7 @@ with stat_col1:
         title="Distribuição de Complexidade",
         height=300
     )
-    st.plotly_chart(fig_complexity, use_container_width=True)
+    st.plotly_chart(fig_complexity)
 
 with stat_col2:
     st.markdown("#### Potencial de Automação")
@@ -362,7 +361,7 @@ with stat_col2:
         title="Potencial de Automação",
         height=300
     )
-    st.plotly_chart(fig_automation, use_container_width=True)
+    st.plotly_chart(fig_automation)
 
 with stat_col3:
     st.markdown("#### Status de Payback")
@@ -383,4 +382,4 @@ with stat_col3:
         title="Distribuição de Payback",
         height=300
     )
-    st.plotly_chart(fig_payback_dist, use_container_width=True)
+    st.plotly_chart(fig_payback_dist)

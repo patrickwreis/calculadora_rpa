@@ -223,7 +223,7 @@ def create_department_report(calculations):
             color_continuous_scale="Blues",
             height=400
         )
-        st.plotly_chart(fig_dept_qty, use_container_width=True)
+        st.plotly_chart(fig_dept_qty)
     
     with col2:
         fig_dept_roi = px.bar(
@@ -235,7 +235,7 @@ def create_department_report(calculations):
             color_continuous_scale="Viridis",
             height=400
         )
-        st.plotly_chart(fig_dept_roi, use_container_width=True)
+        st.plotly_chart(fig_dept_roi)
 
 
 def create_financial_report(calculations):
@@ -293,7 +293,7 @@ def create_financial_report(calculations):
             height=400
         )
         fig_econ.update_layout(xaxis_tickangle=-45, margin=dict(b=100))
-        st.plotly_chart(fig_econ, use_container_width=True)
+        st.plotly_chart(fig_econ)
     
     with chart_col2:
         # Investment vs Savings scatter
@@ -307,7 +307,7 @@ def create_financial_report(calculations):
             color_discrete_sequence=["#2ca02c"],
             height=400
         )
-        st.plotly_chart(fig_invest_scatter, use_container_width=True)
+        st.plotly_chart(fig_invest_scatter)
 
 
 def create_timeline_report(calculations):
@@ -362,7 +362,7 @@ def create_timeline_report(calculations):
         height=400
     )
     fig_timeline.update_layout(xaxis_tickangle=-45, margin=dict(b=100))
-    st.plotly_chart(fig_timeline, use_container_width=True)
+    st.plotly_chart(fig_timeline)
 
 
 def main():
