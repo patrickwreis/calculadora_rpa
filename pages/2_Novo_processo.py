@@ -6,7 +6,7 @@ import streamlit as st
 
 from config import APP_NAME, APP_DESCRIPTION
 from src.calculator import ROICalculator, ROIInput
-from src.calculator.utils import format_currency, format_percentage, format_months, validate_input
+from src.calculator.utils import format_currency, format_percentage, format_months, validate_input, InputValidator
 from src.database import DatabaseManager
 from src.ui.components import page_header
 
@@ -292,11 +292,28 @@ with st.form("roi_form"):
     
     # Handle calculate button
     if calculate_btn:
-        # Validate inputs
-        if not process_name.strip():
-            st.error("❌ Por favor, insira o nome do processo")
-        elif not department.strip():
-            st.error("❌ Por favor, insira a área/departamento")
+        # Comprehensive validation
+        validation_data = {
+            'process_name': process_name,
+            'current_time_per_month': current_time_per_month,
+            'people_involved': people_involved,
+            'hourly_rate': hourly_rate,
+            'rpa_implementation_cost': impl_cost,
+            'rpa_monthly_cost': total_monthly_cost,
+            'expected_automation_percentage': automation_pct,
+            'error_rate': error_rate,
+            'exception_rate': exception_rate,
+            'fines_avoided': fines_avoided,
+            'sql_savings': sql_savings,
+            'maintenance_percentage': maintenance_percentage,
+        }
+        
+        is_valid, errors = InputValidator.validate_all_inputs(validation_data)
+        
+        if not is_valid:
+            st.error("❌ Erros na validação dos dados:")
+            for error in errors:
+                st.error(f"  • {error}")
         else:
             # Create input object and calculate
             input_dict = {
@@ -309,48 +326,43 @@ with st.form("roi_form"):
                 "expected_automation_percentage": automation_pct,
             }
             
-            is_valid, error_msg = validate_input(input_dict)
+            roi_input = ROIInput(**input_dict)
+            result = calculator.calculate(roi_input)
             
-            if not is_valid:
-                st.error(f"❌ {error_msg}")
-            else:
-                roi_input = ROIInput(**input_dict)
-                result = calculator.calculate(roi_input)
-                
-                # Calculate extended ROI with additional benefits
-                extended_metrics = calculator.calculate_extended_roi(
-                    base_result=result,
-                    implementation_cost=impl_cost,
-                    fines_avoided=fines_avoided,
-                    sql_savings=sql_savings
-                )
-                
-                # Store in session state with additional data
-                st.session_state.calculator_results = {
-                    "input": roi_input,
-                    "result": result,
-                    "extended_metrics": extended_metrics,
-                    "timestamp": datetime.datetime.now(),
-                    "department": department,
-                    "complexity": complexity,
-                    "systems_quantity": systems_quantity,
-                    "daily_transactions": daily_transactions,
-                    "error_rate": error_rate,
-                    "exception_rate": exception_rate,
-                    "fines_avoided": fines_avoided,
-                    "sql_savings": sql_savings,
-                    "dev_hours": dev_hours,
-                    "dev_hourly_rate": dev_hourly_rate,
-                    "dev_total_cost": dev_total_cost,
-                    "other_costs": other_costs,
-                    "monthly_cost": monthly_cost,
-                    "infra_license_cost": infra_license_cost,
-                    "total_monthly_cost": total_monthly_cost,
-                    "maintenance_percentage": maintenance_percentage,
-                }
-                
-                st.session_state.show_results = True
-                st.rerun()
+            # Calculate extended ROI with additional benefits
+            extended_metrics = calculator.calculate_extended_roi(
+                base_result=result,
+                implementation_cost=impl_cost,
+                fines_avoided=fines_avoided,
+                sql_savings=sql_savings
+            )
+            
+            # Store in session state with additional data
+            st.session_state.calculator_results = {
+                "input": roi_input,
+                "result": result,
+                "extended_metrics": extended_metrics,
+                "timestamp": datetime.datetime.now(),
+                "department": department,
+                "complexity": complexity,
+                "systems_quantity": systems_quantity,
+                "daily_transactions": daily_transactions,
+                "error_rate": error_rate,
+                "exception_rate": exception_rate,
+                "fines_avoided": fines_avoided,
+                "sql_savings": sql_savings,
+                "dev_hours": dev_hours,
+                "dev_hourly_rate": dev_hourly_rate,
+                "dev_total_cost": dev_total_cost,
+                "other_costs": other_costs,
+                "monthly_cost": monthly_cost,
+                "infra_license_cost": infra_license_cost,
+                "total_monthly_cost": total_monthly_cost,
+                "maintenance_percentage": maintenance_percentage,
+            }
+            
+            st.session_state.show_results = True
+            st.rerun()
 
 # Display results if calculated
 if st.session_state.show_results and st.session_state.calculator_results:
