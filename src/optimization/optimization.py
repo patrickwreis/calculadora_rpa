@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """Database optimization and performance enhancements"""
 import logging
-from sqlalchemy import Index, create_engine, event
+from typing import Optional, Any
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -14,40 +15,23 @@ class DatabaseOptimizer:
     def create_indexes(engine):
         """Create database indexes for frequently queried columns"""
         try:
-            # Get metadata and create indexes
-            from src.models.calculation import Calculation
-            
-            # Create indexes on frequently queried columns
-            indexes = [
-                Index('idx_department', Calculation.department),
-                Index('idx_complexity', Calculation.complexity),
-                Index('idx_created_at', Calculation.created_at),
-                Index('idx_status', Calculation.status),
-                Index('idx_process_name', Calculation.process_name),
-                # Composite indexes for common queries
-                Index('idx_dept_created', Calculation.department, Calculation.created_at),
-            ]
-            
-            # Execute CREATE INDEX IF NOT EXISTS for each index
+            # Execute CREATE INDEX IF NOT EXISTS for each index using raw SQL
             with engine.begin() as conn:
-                for idx in indexes:
+                # Create indexes on frequently queried columns
+                indexes = [
+                    "CREATE INDEX IF NOT EXISTS idx_department ON calculation(department)",
+                    "CREATE INDEX IF NOT EXISTS idx_complexity ON calculation(complexity)",
+                    "CREATE INDEX IF NOT EXISTS idx_created_at ON calculation(created_at)",
+                    "CREATE INDEX IF NOT EXISTS idx_status ON calculation(status)",
+                    "CREATE INDEX IF NOT EXISTS idx_process_name ON calculation(process_name)",
+                    "CREATE INDEX IF NOT EXISTS idx_dept_created ON calculation(department, created_at)",
+                ]
+                
+                for idx_sql in indexes:
                     try:
-                        # Create index using raw SQL for better compatibility
-                        idx_name = idx.name
-                        if idx.name == 'idx_department':
-                            conn.execute("CREATE INDEX IF NOT EXISTS idx_department ON calculation(department)")
-                        elif idx.name == 'idx_complexity':
-                            conn.execute("CREATE INDEX IF NOT EXISTS idx_complexity ON calculation(complexity)")
-                        elif idx.name == 'idx_created_at':
-                            conn.execute("CREATE INDEX IF NOT EXISTS idx_created_at ON calculation(created_at)")
-                        elif idx.name == 'idx_status':
-                            conn.execute("CREATE INDEX IF NOT EXISTS idx_status ON calculation(status)")
-                        elif idx.name == 'idx_process_name':
-                            conn.execute("CREATE INDEX IF NOT EXISTS idx_process_name ON calculation(process_name)")
-                        elif idx.name == 'idx_dept_created':
-                            conn.execute("CREATE INDEX IF NOT EXISTS idx_dept_created ON calculation(department, created_at)")
+                        conn.execute(idx_sql)
                     except Exception as e:
-                        logger.warning(f"Index {idx.name} might already exist: {str(e)}")
+                        logger.warning(f"Index creation skipped (might already exist): {str(e)}")
             
             logger.info("Database indexes created/verified successfully")
             return True
@@ -105,7 +89,7 @@ class SecurityHardener:
     """Security hardening utilities"""
     
     @staticmethod
-    def validate_input_string(input_str: str, max_length: int = 255, allowed_chars: str = None) -> tuple:
+    def validate_input_string(input_str: Any, max_length: int = 255, allowed_chars: Optional[str] = None) -> tuple:
         """
         Validate and sanitize string input
         
@@ -141,7 +125,7 @@ class SecurityHardener:
         return True, cleaned, None
     
     @staticmethod
-    def escape_sql_injection(value: str) -> str:
+    def escape_sql_injection(value: Any) -> str:
         """
         Escape potential SQL injection attempts
         Note: This is for additional safety. SQLAlchemy ORM handles this via parameterized queries.

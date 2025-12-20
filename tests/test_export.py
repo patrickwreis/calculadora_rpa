@@ -86,6 +86,7 @@ class TestPDFExport:
         success, pdf_buffer, error_msg = ExportManager.export_to_pdf(sample_calculations)
         
         assert success is True
+        assert pdf_buffer is not None
         # Buffer should be at position 0
         assert pdf_buffer.tell() == 0
         # Should be able to read from it
@@ -176,6 +177,7 @@ class TestExcelExport:
         success, excel_buffer, error_msg = ExportManager.export_to_excel(sample_calculations)
         
         assert success is True
+        assert excel_buffer is not None
         # Buffer should be at position 0
         assert excel_buffer.tell() == 0
         # Should be able to read from it
@@ -189,6 +191,7 @@ class TestExcelExport:
         success, excel_buffer, error_msg = ExportManager.export_to_excel(sample_calculations)
         
         assert success is True
+        assert excel_buffer is not None
         excel_buffer.seek(0)
         
         # Load the workbook to verify sheets
@@ -228,6 +231,7 @@ class TestExcelExport:
         success, excel_buffer, error_msg = ExportManager.export_to_excel(calculations)
         
         assert success is True
+        assert excel_buffer is not None
         excel_buffer.seek(0)
         
         from openpyxl import load_workbook

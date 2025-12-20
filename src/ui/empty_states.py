@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """UI Components for empty states and enhanced user experience"""
+from typing import Optional
 import streamlit as st
 
 
@@ -25,7 +26,7 @@ class EmptyStateManager:
                 st.switch_page("pages/2_Novo_processo.py")
     
     @staticmethod
-    def show_no_results_empty_state(search_term: str = None):
+    def show_no_results_empty_state(search_term: Optional[str] = None):
         """Display empty state when search returns no results"""
         st.markdown("""
         <div style="text-align: center; padding: 40px 20px;">
@@ -99,7 +100,7 @@ class EmptyStateManager:
         return st.spinner(f"⏳ {message}")
     
     @staticmethod
-    def show_metric_card(title: str, value: str, subtitle: str = None):
+    def show_metric_card(title: str, value: str, subtitle: Optional[str] = None):
         """Display a metric card with title and value"""
         col1, col2, col3 = st.columns([0.5, 2, 0.5])
         
@@ -138,7 +139,7 @@ class EmptyStateManager:
         return st.columns(num_columns)
     
     @staticmethod
-    def show_section_header(title: str, icon: str = None):
+    def show_section_header(title: str, icon: Optional[str] = None):
         """Display a styled section header"""
         if icon:
             st.markdown(f"## {icon} {title}")
