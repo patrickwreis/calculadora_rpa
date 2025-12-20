@@ -28,7 +28,10 @@ page_header("Histórico de Processos", "Visualize, edite e gerencie todos os seu
 
 # Get calculations with loading indicator
 with st.spinner("⏳ Carregando processos..."):
-    calculations = db_manager.get_all_calculations(use_cache=True)
+    success, calculations, error_msg = db_manager.get_all_calculations(use_cache=True)
+    if not success:
+        st.error(f"Erro ao carregar processos: {error_msg}")
+        st.stop()
 
 if not calculations:
     st.info("📋 Nenhum processo salvo ainda. Comece criando um novo cálculo!")
@@ -352,13 +355,17 @@ def edit_process_modal():
                 }
                 
                 with st.spinner("💾 Atualizando processo..."):
-                    db_manager.update_calculation(selected_id, update_data)
+                    success, updated_calc, error_msg = db_manager.update_calculation(selected_id, update_data)
                     db_manager.clear_cache()
-                    st.success("✅ Processo atualizado com sucesso!")
-                    st.session_state.edit_modal = False
-                    import time
-                    time.sleep(0.5)
-                    st.rerun()
+                    
+                    if success:
+                        st.success("✅ Processo atualizado com sucesso!")
+                        st.session_state.edit_modal = False
+                        import time
+                        time.sleep(0.5)
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Erro ao atualizar: {error_msg}")
         
         with col2:
             if st.form_submit_button("❌ Cancelar", width='stretch'):
@@ -377,15 +384,17 @@ def delete_confirmation_modal():
     with col1:
         if st.button("✅ Sim, Excluir", type="secondary", width='stretch', key="confirm_delete"):
             with st.spinner("⏳ Excluindo processo..."):
-                if db_manager.delete_calculation(selected_id):
-                    db_manager.clear_cache()
+                success, error_msg = db_manager.delete_calculation(selected_id)
+                db_manager.clear_cache()
+                
+                if success:
                     st.success("✅ Processo excluído com sucesso!")
                     st.session_state.delete_modal = False
                     import time
                     time.sleep(0.5)
                     st.rerun()
                 else:
-                    st.error("❌ Erro ao excluir o processo")
+                    st.error(f"❌ Erro ao excluir: {error_msg}")
     
     with col2:
         if st.button("❌ Cancelar", width='stretch', key="cancel_delete"):

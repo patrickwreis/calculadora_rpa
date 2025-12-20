@@ -572,17 +572,21 @@ if st.session_state.show_results and st.session_state.calculator_results:
                     "roi_percentage_first_year": ((total_monthly_savings * 12 - roi_input.rpa_implementation_cost) / roi_input.rpa_implementation_cost * 100),
                     }
                     
-                    db_manager.save_calculation(calculation_data)
-                    st.success("✅ Cálculo salvo com sucesso!")
+                    success, saved_calc, error_msg = db_manager.save_calculation(calculation_data)
                     
-                    # Clear calculator results and cache
-                    st.session_state.show_results = False
-                    st.session_state.calculator_results = None
-                    db_manager.clear_cache()
-                    
-                    import time
-                    time.sleep(1)
-                    st.rerun()
+                    if success:
+                        st.success("✅ Cálculo salvo com sucesso!")
+                        
+                        # Clear calculator results and cache
+                        st.session_state.show_results = False
+                        st.session_state.calculator_results = None
+                        db_manager.clear_cache()
+                        
+                        import time
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Erro ao salvar: {error_msg}")
                 st.success("✅ Cálculo salvo com sucesso! Veja o histórico na aba 'Histórico de Resultados'")
             except Exception as e:
                 st.error(f"❌ Erro ao salvar: {str(e)}")

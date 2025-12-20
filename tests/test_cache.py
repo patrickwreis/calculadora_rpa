@@ -67,20 +67,24 @@ class TestDatabaseManagerCache:
     def test_get_all_calculations_uses_cache(self, db_manager):
         """Test that get_all_calculations uses cache"""
         # First call should query database
-        result1 = db_manager.get_all_calculations(use_cache=True)
+        success1, result1, err1 = db_manager.get_all_calculations(use_cache=True)
         
         # Second call should use cache
-        result2 = db_manager.get_all_calculations(use_cache=True)
+        success2, result2, err2 = db_manager.get_all_calculations(use_cache=True)
         
-        # Results should be the same
+        # Results should be successful and same length
+        assert success1 is True
+        assert success2 is True
         assert len(result1) == len(result2)
     
     def test_get_all_calculations_bypass_cache(self, db_manager):
         """Test bypassing cache"""
-        result1 = db_manager.get_all_calculations(use_cache=False)
-        result2 = db_manager.get_all_calculations(use_cache=False)
+        success1, result1, _ = db_manager.get_all_calculations(use_cache=False)
+        success2, result2, _ = db_manager.get_all_calculations(use_cache=False)
         
         # Both should work correctly even without cache
+        assert success1 is True
+        assert success2 is True
         assert isinstance(result1, list)
         assert isinstance(result2, list)
     
@@ -90,12 +94,12 @@ class TestDatabaseManagerCache:
         db_manager.clear_cache()
         
         # Get all calculations (fills cache)
-        result1 = db_manager.get_all_calculations(use_cache=True)
-        count1 = len(result1)
+        success1, result1, _ = db_manager.get_all_calculations(use_cache=True)
+        count1 = len(result1) if success1 else 0
         
         # Save a new calculation
         calculation_data = {
-            'process_name': 'Cache Test Process',
+            'process_name': 'Cache Test Process New',
             'current_time_per_month': 100.0,
             'people_involved': 1,
             'hourly_rate': 50.0,
@@ -109,11 +113,15 @@ class TestDatabaseManagerCache:
             'roi_percentage_first_year': 140.0,
         }
         
-        db_manager.save_calculation(calculation_data)
+        success_save, saved_calc, error_save = db_manager.save_calculation(calculation_data)
+        
+        # Save should succeed
+        assert success_save is True
+        assert saved_calc is not None
         
         # Get all calculations again (should query database, not use old cache)
-        result2 = db_manager.get_all_calculations(use_cache=True)
-        count2 = len(result2)
+        success2, result2, _ = db_manager.get_all_calculations(use_cache=True)
+        count2 = len(result2) if success2 else count1
         
         # Count should increase
         assert count2 > count1
@@ -124,7 +132,7 @@ class TestDatabaseManagerCache:
         
         # Create a calculation
         calculation_data = {
-            'process_name': 'Update Cache Test',
+            'process_name': 'Update Cache Test New',
             'current_time_per_month': 100.0,
             'people_involved': 1,
             'hourly_rate': 50.0,
@@ -138,19 +146,23 @@ class TestDatabaseManagerCache:
             'roi_percentage_first_year': 140.0,
         }
         
-        calc = db_manager.save_calculation(calculation_data)
+        success_save, calc, _ = db_manager.save_calculation(calculation_data)
+        assert success_save is True
         calc_id = calc.id
         
         # Get and cache it
-        result1 = db_manager.get_calculation(calc_id, use_cache=True)
-        assert result1.process_name == 'Update Cache Test'
+        success1, result1, _ = db_manager.get_calculation(calc_id, use_cache=True)
+        assert success1 is True
+        assert result1.process_name == 'Update Cache Test New'
         
         # Update it
-        db_manager.update_calculation(calc_id, {'process_name': 'Updated Name'})
+        success_upd, result_upd, _ = db_manager.update_calculation(calc_id, {'process_name': 'Updated Name New'})
+        assert success_upd is True
         
         # Get it again (should reflect update)
-        result2 = db_manager.get_calculation(calc_id, use_cache=True)
-        assert result2.process_name == 'Updated Name'
+        success2, result2, _ = db_manager.get_calculation(calc_id, use_cache=True)
+        assert success2 is True
+        assert result2.process_name == 'Updated Name New'
     
     def test_cache_invalidation_on_delete(self, db_manager):
         """Test that cache is invalidated on delete"""
@@ -158,7 +170,7 @@ class TestDatabaseManagerCache:
         
         # Create a calculation
         calculation_data = {
-            'process_name': 'Delete Cache Test',
+            'process_name': 'Delete Cache Test New',
             'current_time_per_month': 100.0,
             'people_involved': 1,
             'hourly_rate': 50.0,
@@ -172,19 +184,21 @@ class TestDatabaseManagerCache:
             'roi_percentage_first_year': 140.0,
         }
         
-        calc = db_manager.save_calculation(calculation_data)
+        success_save, calc, _ = db_manager.save_calculation(calculation_data)
+        assert success_save is True
         calc_id = calc.id
         
         # Cache it
-        result1 = db_manager.get_all_calculations(use_cache=True)
-        count1 = len(result1)
+        success1, result1, _ = db_manager.get_all_calculations(use_cache=True)
+        count1 = len(result1) if success1 else 0
         
         # Delete it
-        db_manager.delete_calculation(calc_id)
+        success_del, error_del = db_manager.delete_calculation(calc_id)
+        assert success_del is True
         
         # Get all calculations again (should reflect deletion)
-        result2 = db_manager.get_all_calculations(use_cache=True)
-        count2 = len(result2)
+        success2, result2, _ = db_manager.get_all_calculations(use_cache=True)
+        count2 = len(result2) if success2 else 0
         
         # Count should decrease
         assert count2 < count1
@@ -193,6 +207,7 @@ class TestDatabaseManagerCache:
         """Test static clear_cache method"""
         db_manager.clear_cache()
         
-        # Cache should be empty
-        result = db_manager.get_all_calculations(use_cache=True)
+        # Cache should be empty, get should still work
+        success, result, _ = db_manager.get_all_calculations(use_cache=True)
+        assert success is True
         assert isinstance(result, list)

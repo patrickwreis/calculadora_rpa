@@ -45,7 +45,10 @@ db_manager = DatabaseManager()
 
 # Get calculations with loading indicator
 with st.spinner("⏳ Carregando dados do dashboard..."):
-    calculations = db_manager.get_all_calculations(use_cache=True)
+    success, calculations, error_msg = db_manager.get_all_calculations(use_cache=True)
+    if not success:
+        st.error(f"Erro ao carregar dashboard: {error_msg}")
+        st.stop()
 
 if not calculations:
     st.info("📋 Nenhum processo cadastrado ainda. Comece criando um novo cálculo na aba 'Novo Processo'!")

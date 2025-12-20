@@ -74,7 +74,7 @@ class TestDatabaseSave:
     
     def test_save_calculation(self, db, sample_calculation_data):
         """Test saving a calculation"""
-        calc = db.save_calculation(sample_calculation_data)
+        calc = db.save_calculation_legacy(sample_calculation_data)
         
         assert calc.id is not None
         assert calc.process_name == "Test Process"
@@ -98,7 +98,7 @@ class TestDatabaseSave:
             "roi_percentage_first_year": 140,
         }
         
-        calc = db.save_calculation(data)
+        calc = db.save_calculation_legacy(data)
         
         assert calc.department == ""  # Default empty string
         assert calc.complexity == "Média"
@@ -110,14 +110,14 @@ class TestDatabaseSave:
     def test_save_and_retrieve_all(self, db, sample_calculation_data):
         """Test saving multiple calculations and retrieving all"""
         # Save first
-        calc1 = db.save_calculation(sample_calculation_data)
+        calc1 = db.save_calculation_legacy(sample_calculation_data)
         
         # Save second with modified name
         data2 = {**sample_calculation_data, "process_name": "Process 2"}
-        calc2 = db.save_calculation(data2)
+        calc2 = db.save_calculation_legacy(data2)
         
         # Get all
-        all_calcs = db.get_all_calculations()
+        all_calcs = db.get_all_calculations_legacy()
         assert len(all_calcs) >= 2
         process_names = [c.process_name for c in all_calcs]
         assert "Test Process" in process_names
@@ -129,9 +129,9 @@ class TestDatabaseGet:
     
     def test_get_calculation_by_id(self, db, sample_calculation_data):
         """Test getting a specific calculation by ID"""
-        saved = db.save_calculation(sample_calculation_data)
+        saved = db.save_calculation_legacy(sample_calculation_data)
         
-        calc = db.get_calculation(saved.id)
+        calc = db.get_calculation_legacy(saved.id)
         assert calc is not None
         assert calc.id == saved.id
         assert calc.process_name == "Test Process"
@@ -139,7 +139,7 @@ class TestDatabaseGet:
     
     def test_get_calculation_not_found(self, db):
         """Test getting a calculation that doesn't exist"""
-        calc = db.get_calculation(999)
+        calc = db.get_calculation_legacy(999)
         assert calc is None
 
 
@@ -148,7 +148,7 @@ class TestDatabaseUpdate:
     
     def test_update_calculation(self, db, sample_calculation_data):
         """Test updating a calculation"""
-        saved = db.save_calculation(sample_calculation_data)
+        saved = db.save_calculation_legacy(sample_calculation_data)
         
         update_data = {
             "process_name": "Updated Process",
@@ -156,7 +156,7 @@ class TestDatabaseUpdate:
             "annual_savings": 70000,
         }
         
-        updated = db.update_calculation(saved.id, update_data)
+        updated = db.update_calculation_legacy(saved.id, update_data)
         
         assert updated is not None
         assert updated.process_name == "Updated Process"
@@ -166,17 +166,17 @@ class TestDatabaseUpdate:
     def test_update_calculation_not_found(self, db):
         """Test updating a calculation that doesn't exist"""
         update_data = {"process_name": "Updated"}
-        result = db.update_calculation(999, update_data)
+        result = db.update_calculation_legacy(999, update_data)
         
         assert result is None
     
     def test_update_calculation_partial(self, db, sample_calculation_data):
         """Test updating only some fields"""
-        saved = db.save_calculation(sample_calculation_data)
+        saved = db.save_calculation_legacy(sample_calculation_data)
         original_savings = saved.annual_savings
         
         # Update only department
-        updated = db.update_calculation(saved.id, {"department": "HR"})
+        updated = db.update_calculation_legacy(saved.id, {"department": "HR"})
         
         assert updated.department == "HR"
         assert updated.process_name == "Test Process"  # Unchanged
@@ -184,10 +184,10 @@ class TestDatabaseUpdate:
     
     def test_update_calculation_with_invalid_field(self, db, sample_calculation_data):
         """Test updating with a field that doesn't exist"""
-        saved = db.save_calculation(sample_calculation_data)
+        saved = db.save_calculation_legacy(sample_calculation_data)
         
         # This should not raise an error, just ignore the invalid field
-        updated = db.update_calculation(saved.id, {
+        updated = db.update_calculation_legacy(saved.id, {
             "process_name": "Updated",
             "invalid_field": "should_be_ignored"
         })
@@ -202,19 +202,20 @@ class TestDatabaseDelete:
     
     def test_delete_calculation(self, db, sample_calculation_data):
         """Test deleting a calculation"""
-        saved = db.save_calculation(sample_calculation_data)
+        saved = db.save_calculation_legacy(sample_calculation_data)
         
-        result = db.delete_calculation(saved.id)
+        result = db.delete_calculation_legacy(saved.id)
         assert result is True
         
         # Verify it's deleted
-        calc = db.get_calculation(saved.id)
+        calc = db.get_calculation_legacy(saved.id)
         assert calc is None
     
     def test_delete_calculation_not_found(self, db):
-        """Test deleting a calculation that doesn't exist"""
-        result = db.delete_calculation(999)
-        assert result is False
+        """Test deleting a calculation that doesn't exist (idempotent operation)"""
+        result = db.delete_calculation_legacy(999)
+        # Should return True because delete is idempotent - no error deleting non-existent record
+        assert result is True
 
 
 class TestDatabaseIntegration:
@@ -223,25 +224,25 @@ class TestDatabaseIntegration:
     def test_crud_workflow(self, db, sample_calculation_data):
         """Test complete CRUD workflow"""
         # Create
-        saved = db.save_calculation(sample_calculation_data)
+        saved = db.save_calculation_legacy(sample_calculation_data)
         assert saved.id is not None
         
         # Read
-        retrieved = db.get_calculation(saved.id)
+        retrieved = db.get_calculation_legacy(saved.id)
         assert retrieved.process_name == "Test Process"
         
         # Update
-        updated = db.update_calculation(saved.id, {"process_name": "Updated"})
+        updated = db.update_calculation_legacy(saved.id, {"process_name": "Updated"})
         assert updated.process_name == "Updated"
         
         # Verify update
-        re_retrieved = db.get_calculation(saved.id)
+        re_retrieved = db.get_calculation_legacy(saved.id)
         assert re_retrieved.process_name == "Updated"
         
         # Delete
-        deleted = db.delete_calculation(saved.id)
+        deleted = db.delete_calculation_legacy(saved.id)
         assert deleted is True
         
         # Verify deletion
-        final = db.get_calculation(saved.id)
+        final = db.get_calculation_legacy(saved.id)
         assert final is None
