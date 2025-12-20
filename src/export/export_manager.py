@@ -2,7 +2,7 @@
 """Export Manager - PDF and Excel export functionality"""
 from datetime import datetime
 from io import BytesIO
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import logging
 
 from reportlab.lib.pagesizes import letter, A4
@@ -30,7 +30,7 @@ class ExportManager:
     ALTERNATE_ROW_COLOR = colors.HexColor("#f0f0f0")
     
     @staticmethod
-    def export_to_pdf(calculations: List[dict], filename: str = None) -> Tuple[bool, BytesIO, str]:
+    def export_to_pdf(calculations: List[dict], filename: Optional[str] = None) -> Tuple[bool, Optional[BytesIO], Optional[str]]:
         """
         Export calculations to PDF format
         
@@ -216,7 +216,7 @@ class ExportManager:
             return False, None, f"Erro ao gerar PDF: {str(e)}"
     
     @staticmethod
-    def export_to_excel(calculations: List[dict], filename: str = None) -> Tuple[bool, BytesIO, str]:
+    def export_to_excel(calculations: List[dict], filename: Optional[str] = None) -> Tuple[bool, Optional[BytesIO], Optional[str]]:
         """
         Export calculations to Excel format
         
