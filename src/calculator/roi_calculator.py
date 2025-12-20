@@ -89,3 +89,70 @@ class ROICalculator:
     def calculate_multiple(self, inputs: list) -> list:
         """Calculate ROI for multiple processes"""
         return [self.calculate(input_data) for input_data in inputs]
+    
+    def calculate_extended_roi(
+        self, 
+        base_result: ROIResult, 
+        implementation_cost: float,
+        fines_avoided: float = 0.0,
+        sql_savings: float = 0.0
+    ) -> Dict[str, float]:
+        """
+        Calculate extended ROI metrics including additional benefits
+        
+        Args:
+            base_result: Base ROI calculation result
+            implementation_cost: Implementation cost
+            fines_avoided: Monthly fines avoided (default: 0.0)
+            sql_savings: Monthly SLA savings (default: 0.0)
+            
+        Returns:
+            Dictionary with extended metrics including ROI for 1, 2, and 5 years
+        """
+        # Total monthly savings including additional benefits
+        total_monthly_savings = base_result.monthly_savings + fines_avoided + sql_savings
+        
+        # Calculate annual savings
+        total_annual_savings = total_monthly_savings * 12
+        
+        # Calculate payback period with additional benefits
+        if total_monthly_savings > 0:
+            payback_period = implementation_cost / total_monthly_savings
+        else:
+            payback_period = float('inf')
+        
+        # Calculate ROI for different time periods
+        def calculate_roi_for_period(months: int) -> Tuple[float, float]:
+            """Calculate ROI percentage and total savings for a given period"""
+            total_savings = total_monthly_savings * months
+            roi_value = total_savings - implementation_cost
+            roi_percentage = (roi_value / implementation_cost * 100) if implementation_cost > 0 else 0
+            return roi_percentage, roi_value
+        
+        roi_1year_pct, economia_1year = calculate_roi_for_period(12)
+        roi_2years_pct, economia_2years = calculate_roi_for_period(24)
+        roi_5years_pct, economia_5years = calculate_roi_for_period(60)
+        
+        return {
+            # Monthly and annual savings
+            "total_monthly_savings": total_monthly_savings,
+            "total_annual_savings": total_annual_savings,
+            
+            # Payback
+            "payback_period_months": payback_period,
+            
+            # ROI percentages for different periods
+            "roi_1year_percentage": roi_1year_pct,
+            "roi_2years_percentage": roi_2years_pct,
+            "roi_5years_percentage": roi_5years_pct,
+            
+            # Total savings (economia) for different periods
+            "economia_1year": economia_1year,
+            "economia_2years": economia_2years,
+            "economia_5years": economia_5years,
+            
+            # Additional benefits breakdown
+            "fines_avoided": fines_avoided,
+            "sql_savings": sql_savings,
+            "base_savings": base_result.monthly_savings,
+        }

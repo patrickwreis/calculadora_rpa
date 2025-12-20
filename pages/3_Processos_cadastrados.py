@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from config import APP_NAME
+from src.calculator import ROICalculator, ROIInput, ROIResult
 from src.calculator.utils import format_currency, format_percentage, format_months
 from src.database import DatabaseManager
 from src.ui.components import page_header
@@ -18,8 +19,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Initialize database
+# Initialize database and calculator
 db_manager = DatabaseManager()
+calculator = ROICalculator()
 
 # Page header
 page_header("Histórico de Processos", "Visualize, edite e gerencie todos os seus cálculos de ROI")
@@ -286,10 +288,27 @@ def edit_process_modal():
         
         with col1:
             if st.form_submit_button("💾 Salvar", type="primary", width='stretch'):
-                # Recalculate savings including additional benefits
-                base_savings = (current_time * people * hourly_rate * automation_pct / 100)
-                monthly_savings = base_savings + fines_avoided + sql_savings
-                annual_savings = monthly_savings * 12
+                # Create ROI input for base calculation
+                roi_input = ROIInput(
+                    process_name=process_name,
+                    current_time_per_month=float(current_time),
+                    people_involved=int(people),
+                    hourly_rate=float(hourly_rate),
+                    rpa_implementation_cost=float(impl_cost),
+                    rpa_monthly_cost=float(monthly_rpa_cost),
+                    expected_automation_percentage=float(automation_pct),
+                )
+                
+                # Calculate base ROI
+                base_result = calculator.calculate(roi_input)
+                
+                # Calculate extended ROI with additional benefits
+                extended_metrics = calculator.calculate_extended_roi(
+                    base_result=base_result,
+                    implementation_cost=float(impl_cost),
+                    fines_avoided=float(fines_avoided),
+                    sql_savings=float(sql_savings)
+                )
                 
                 update_data = {
                     # Basic Information
@@ -321,11 +340,11 @@ def edit_process_modal():
                     "sql_savings": float(sql_savings),
                     
                     # Calculated Results
-                    "monthly_savings": monthly_savings,
-                    "annual_savings": annual_savings,
-                    "payback_period_months": impl_cost / monthly_savings if monthly_savings > 0 else 0,
-                    "roi_first_year": (annual_savings - impl_cost),
-                    "roi_percentage_first_year": ((annual_savings - impl_cost) / impl_cost * 100) if impl_cost > 0 else 0,
+                    "monthly_savings": extended_metrics["total_monthly_savings"],
+                    "annual_savings": extended_metrics["total_annual_savings"],
+                    "payback_period_months": extended_metrics["payback_period_months"],
+                    "roi_first_year": extended_metrics["economia_1year"],
+                    "roi_percentage_first_year": extended_metrics["roi_1year_percentage"],
                     
                     # Timestamp
                     "updated_at": datetime.utcnow(),

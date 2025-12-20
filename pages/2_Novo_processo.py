@@ -317,10 +317,19 @@ with st.form("roi_form"):
                 roi_input = ROIInput(**input_dict)
                 result = calculator.calculate(roi_input)
                 
+                # Calculate extended ROI with additional benefits
+                extended_metrics = calculator.calculate_extended_roi(
+                    base_result=result,
+                    implementation_cost=impl_cost,
+                    fines_avoided=fines_avoided,
+                    sql_savings=sql_savings
+                )
+                
                 # Store in session state with additional data
                 st.session_state.calculator_results = {
                     "input": roi_input,
                     "result": result,
+                    "extended_metrics": extended_metrics,
                     "timestamp": datetime.datetime.now(),
                     "department": department,
                     "complexity": complexity,
@@ -350,20 +359,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
     
     result = st.session_state.calculator_results["result"]
     roi_input = st.session_state.calculator_results["input"]
-    fines_avoided = st.session_state.calculator_results.get("fines_avoided", 0)
-    sql_savings = st.session_state.calculator_results.get("sql_savings", 0)
-    
-    # Calculate totals with additional benefits
-    total_monthly_savings = result.monthly_savings + fines_avoided + sql_savings
-    
-    # Calculate ROI and Economia for 1, 2, and 5 years
-    roi_1year = ((total_monthly_savings * 12 - roi_input.rpa_implementation_cost) / roi_input.rpa_implementation_cost * 100)
-    roi_2years = ((total_monthly_savings * 24 - roi_input.rpa_implementation_cost) / roi_input.rpa_implementation_cost * 100)
-    roi_5years = ((total_monthly_savings * 60 - roi_input.rpa_implementation_cost) / roi_input.rpa_implementation_cost * 100)
-    
-    economia_1year = total_monthly_savings * 12 - roi_input.rpa_implementation_cost
-    economia_2years = total_monthly_savings * 24 - roi_input.rpa_implementation_cost
-    economia_5years = total_monthly_savings * 60 - roi_input.rpa_implementation_cost
+    extended_metrics = st.session_state.calculator_results["extended_metrics"]
     
     # Results Dashboard
     st.divider()
@@ -373,27 +369,27 @@ if st.session_state.show_results and st.session_state.calculator_results:
     st.subheader("💰 Economia (1, 2 e 5 anos)")
     eco_col1, eco_col2, eco_col3 = st.columns(3)
     with eco_col1:
-        st.metric("1 Ano", format_currency(economia_1year))
+        st.metric("1 Ano", format_currency(extended_metrics["economia_1year"]))
     with eco_col2:
-        st.metric("2 Anos", format_currency(economia_2years))
+        st.metric("2 Anos", format_currency(extended_metrics["economia_2years"]))
     with eco_col3:
-        st.metric("5 Anos", format_currency(economia_5years))
+        st.metric("5 Anos", format_currency(extended_metrics["economia_5years"]))
     
     st.subheader("📈 ROI (1, 2 e 5 anos)")
     roi_col1, roi_col2, roi_col3 = st.columns(3)
     with roi_col1:
-        st.metric("1 Ano", f"{roi_1year:.1f}%")
+        st.metric("1 Ano", f"{extended_metrics['roi_1year_percentage']:.1f}%")
     with roi_col2:
-        st.metric("2 Anos", f"{roi_2years:.1f}%")
+        st.metric("2 Anos", f"{extended_metrics['roi_2years_percentage']:.1f}%")
     with roi_col3:
-        st.metric("5 Anos", f"{roi_5years:.1f}%")
+        st.metric("5 Anos", f"{extended_metrics['roi_5years_percentage']:.1f}%")
     
     st.subheader("⏱️ Payback e Economia Mensal")
     payback_col1, payback_col2, payback_col3 = st.columns(3)
     with payback_col1:
-        st.metric("Payback", f"{result.payback_period_months:.1f}m")
+        st.metric("Payback", f"{extended_metrics['payback_period_months']:.1f}m")
     with payback_col2:
-        st.metric("Economia Mensal", format_currency(total_monthly_savings))
+        st.metric("Economia Mensal", format_currency(extended_metrics['total_monthly_savings']))
     with payback_col3:
         capacity_hours = result.automation_capacity
         st.metric("Capacidade Liberada", f"{capacity_hours:.0f}h/mês")
