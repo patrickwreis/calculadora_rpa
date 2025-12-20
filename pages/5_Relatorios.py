@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Reports page for RPA calculations analysis"""
-import streamlit as st
+"""Reports page for RPA calculations analysis with professional UI"""
+from datetime import datetime
+
 import pandas as pd
-from datetime import datetime, timedelta
-from src.database import DatabaseManager
+import plotly.express as px
+import plotly.graph_objects as go
+import streamlit as st
+
 from src.calculator.utils import format_currency, format_percentage
+from src.database import DatabaseManager
 
 
 def load_data():
@@ -112,10 +116,28 @@ def create_department_report(calculations):
     col1, col2 = st.columns(2)
     
     with col1:
-        st.bar_chart(df.set_index("Departamento")["Qtd. Processos"])
+        fig_dept_qty = px.bar(
+            df,
+            x="Departamento",
+            y="Qtd. Processos",
+            title="Quantidade de Processos por Departamento",
+            color="Qtd. Processos",
+            color_continuous_scale="Blues",
+            height=400
+        )
+        st.plotly_chart(fig_dept_qty, use_container_width=True)
     
     with col2:
-        st.bar_chart(df.set_index("Departamento")["ROI Médio (%)"])
+        fig_dept_roi = px.bar(
+            df,
+            x="Departamento",
+            y="ROI Médio (%)",
+            title="ROI Médio por Departamento (%)",
+            color="ROI Médio (%)",
+            color_continuous_scale="Viridis",
+            height=400
+        )
+        st.plotly_chart(fig_dept_roi, use_container_width=True)
 
 
 def create_financial_report(calculations):
@@ -145,15 +167,49 @@ def create_financial_report(calculations):
     
     with col1:
         total_investment = df["Investimento Inicial"].sum()
-        st.metric("Investimento Total", format_currency(total_investment))
+        st.metric("💻 Investimento Total", format_currency(total_investment))
     
     with col2:
         total_monthly = df["Economia Mensal"].sum()
-        st.metric("Economia Mensal Total", format_currency(total_monthly))
+        st.metric("📅 Economia Mensal Total", format_currency(total_monthly))
     
     with col3:
         total_annual = df["Economia Anual"].sum()
-        st.metric("Economia Anual Total", format_currency(total_annual))
+        st.metric("📊 Economia Anual Total", format_currency(total_annual))
+    
+    st.divider()
+    
+    # Financial visualizations
+    chart_col1, chart_col2 = st.columns(2)
+    
+    with chart_col1:
+        # Top processes by savings
+        top_df = df.nlargest(8, "Economia Anual")
+        fig_econ = px.bar(
+            top_df,
+            x="Processo",
+            y="Economia Anual",
+            title="Top 8 Processos - Economia Anual",
+            color="Economia Anual",
+            color_continuous_scale="Greens",
+            height=400
+        )
+        fig_econ.update_layout(xaxis_tickangle=-45, margin=dict(b=100))
+        st.plotly_chart(fig_econ, use_container_width=True)
+    
+    with chart_col2:
+        # Investment vs Savings scatter
+        fig_invest_scatter = px.scatter(
+            df.nlargest(10, "Economia Anual"),
+            x="Investimento Inicial",
+            y="Economia Anual",
+            size="Economia Mensal",
+            hover_name="Processo",
+            title="Investimento vs Economia (Top 10)",
+            color_discrete_sequence=["#2ca02c"],
+            height=400
+        )
+        st.plotly_chart(fig_invest_scatter, use_container_width=True)
 
 
 def create_timeline_report(calculations):
@@ -185,11 +241,30 @@ def create_timeline_report(calculations):
     long = len([c for c in sorted_calcs if c.payback_period_months > 12])
     
     with col1:
-        st.metric("Payback Rápido (≤6m)", fast)
+        st.metric("⚡ Payback Rápido (≤6m)", fast)
     with col2:
-        st.metric("Payback Médio (6-12m)", medium)
+        st.metric("🔄 Payback Médio (6-12m)", medium)
     with col3:
-        st.metric("Payback Longo (>12m)", long)
+        st.metric("🐢 Payback Longo (>12m)", long)
+    
+    st.divider()
+    
+    # Timeline visualization
+    fig_timeline = px.bar(
+        df,
+        x="Processo",
+        y="Payback (meses)",
+        color="Status",
+        title="Timeline de Payback - Todos os Processos",
+        color_discrete_map={
+            "✅ Rápido": "#2ca02c",
+            "⏳ Médio": "#ff7f0e",
+            "⏸️ Longo": "#d62728"
+        },
+        height=400
+    )
+    fig_timeline.update_layout(xaxis_tickangle=-45, margin=dict(b=100))
+    st.plotly_chart(fig_timeline, use_container_width=True)
 
 
 def main():

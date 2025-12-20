@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 """Process Management - Simplified Single Page"""
-import streamlit as st
-import pandas as pd
 from datetime import datetime
+
+import pandas as pd
+import streamlit as st
+
+from config import APP_NAME
+from src.calculator.utils import format_currency, format_percentage, format_months
 from src.database import DatabaseManager
 from src.ui.components import page_header
-from src.calculator.utils import format_currency, format_percentage, format_months
-from config import APP_NAME
 
 # Page config
 st.set_page_config(

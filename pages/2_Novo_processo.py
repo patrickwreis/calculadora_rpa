@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 """Main Calculator Page - Based on Verzel Calculator"""
+import datetime
+
 import streamlit as st
+
+from config import APP_NAME, APP_DESCRIPTION
 from src.calculator import ROICalculator, ROIInput
 from src.calculator.utils import format_currency, format_percentage, format_months, validate_input
-from src.ui.components import page_header
 from src.database import DatabaseManager
-from config import APP_NAME, APP_DESCRIPTION
-import datetime
+from src.ui.components import page_header
 
 # Page config
 st.set_page_config(

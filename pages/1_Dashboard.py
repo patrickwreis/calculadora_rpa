@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Dashboard - Overview and Statistics"""
+"""Dashboard - Overview and Statistics with Professional UI"""
 import streamlit as st
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
+
+from config import APP_NAME
+from src.calculator.utils import format_currency, format_percentage
 from src.database import DatabaseManager
 from src.ui.components import page_header
-from src.calculator.utils import format_currency, format_percentage
-from config import APP_NAME
 
 # Page config
 st.set_page_config(
@@ -14,11 +18,30 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Custom CSS for better styling
+st.markdown("""
+<style>
+    .metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        border-radius: 10px;
+        color: white;
+        margin: 10px 0;
+    }
+    .metric-value {
+        font-size: 28px;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    .metric-label {
+        font-size: 14px;
+        opacity: 0.9;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Initialize database
 db_manager = DatabaseManager()
-
-# Page header
-page_header("Dashboard", "Visão geral de todos os seus processos RPA")
 
 # Get calculations
 calculations = db_manager.get_all_calculations()
@@ -27,114 +50,331 @@ if not calculations:
     st.info("📋 Nenhum processo cadastrado ainda. Comece criando um novo cálculo na aba 'Novo Processo'!")
     st.stop()
 
+# ========== HEADER ==========
+st.title("📊 Dashboard Executivo")
+st.markdown("Visão geral de todos os seus processos RPA")
 st.divider()
 
-# ========== MAIN METRICS ==========
-st.markdown("### 📊 Resumo Geral")
+# ========== KEY METRICS SECTION ==========
+st.markdown("### 📈 Indicadores Principais")
 
-col1, col2, col3, col4 = st.columns(4)
+total_processes = len(calculations)
+total_annual_savings = sum(c.annual_savings for c in calculations)
+total_investment = sum(c.rpa_implementation_cost for c in calculations)
+avg_roi = sum(c.roi_percentage_first_year for c in calculations) / len(calculations)
+avg_payback = sum(c.payback_period_months for c in calculations) / len(calculations)
+
+col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    st.metric("Total de Processos", len(calculations))
+    st.metric(
+        "🔢 Processos",
+        total_processes,
+        help="Total de processos analisados"
+    )
 
 with col2:
-    total_annual_savings = sum(c.annual_savings for c in calculations)
-    st.metric("Economia Anual Total", format_currency(total_annual_savings))
+    st.metric(
+        "💰 Economia Anual",
+        format_currency(total_annual_savings),
+        delta=f"R$ {(total_annual_savings/12):.0f}/mês",
+        help="Economia total por ano"
+    )
 
 with col3:
-    avg_roi = sum(c.roi_percentage_first_year for c in calculations) / len(calculations)
-    st.metric("ROI Médio 1º Ano", f"{avg_roi:.1f}%")
+    st.metric(
+        "💡 ROI Médio",
+        f"{avg_roi:.1f}%",
+        delta=f"+{avg_roi-100:.1f}%" if avg_roi > 100 else f"{avg_roi-100:.1f}%",
+        help="Retorno médio no primeiro ano"
+    )
 
 with col4:
-    avg_payback = sum(c.payback_period_months for c in calculations) / len(calculations)
-    st.metric("Payback Médio", f"{avg_payback:.1f} meses")
+    st.metric(
+        "⏱️ Payback Médio",
+        f"{avg_payback:.1f}",
+        "meses",
+        help="Tempo médio para recuperar investimento"
+    )
+
+with col5:
+    st.metric(
+        "💻 Investimento Total",
+        format_currency(total_investment),
+        help="Total investido em RPA"
+    )
 
 st.divider()
 
-# ========== TOP PERFORMERS ==========
-st.markdown("### 🏆 Top Performers")
+# ========== CHARTS SECTION ==========
+st.markdown("### 📊 Análises Visuais")
 
-col1, col2 = st.columns(2)
+chart_col1, chart_col2 = st.columns(2)
 
-with col1:
-    st.subheader("🎯 Maior ROI")
-    top_roi = max(calculations, key=lambda x: x.roi_percentage_first_year)
-    st.write(f"**{top_roi.process_name}**")
-    st.write(f"ROI: {top_roi.roi_percentage_first_year:.1f}%")
-    st.write(f"Economia Anual: {format_currency(top_roi.annual_savings)}")
+# Chart 1: ROI Distribution
+with chart_col1:
+    roi_data = pd.DataFrame([
+        {"Processo": c.process_name, "ROI %": c.roi_percentage_first_year}
+        for c in calculations
+    ]).sort_values("ROI %", ascending=True)
+    
+    fig_roi = px.bar(
+        roi_data,
+        x="ROI %",
+        y="Processo",
+        orientation="h",
+        title="ROI por Processo (%)",
+        color="ROI %",
+        color_continuous_scale="RdYlGn",
+        labels={"ROI %": "ROI (%)"},
+        height=400
+    )
+    fig_roi.update_layout(
+        showlegend=False,
+        hovermode="closest",
+        margin=dict(l=150, r=20, t=40, b=20)
+    )
+    st.plotly_chart(fig_roi, use_container_width=True)
 
-with col2:
-    st.subheader("⏱️ Menor Payback")
-    top_payback = min(calculations, key=lambda x: x.payback_period_months)
-    st.write(f"**{top_payback.process_name}**")
-    st.write(f"Payback: {top_payback.payback_period_months:.1f} meses")
-    st.write(f"Economia Mensal: {format_currency(top_payback.monthly_savings)}")
+# Chart 2: Payback Timeline
+with chart_col2:
+    payback_data = pd.DataFrame([
+        {"Processo": c.process_name, "Payback (meses)": c.payback_period_months}
+        for c in calculations
+    ]).sort_values("Payback (meses)")
+    
+    fig_payback = px.bar(
+        payback_data,
+        x="Payback (meses)",
+        y="Processo",
+        orientation="h",
+        title="Payback por Processo (meses)",
+        color="Payback (meses)",
+        color_continuous_scale="Viridis",
+        height=400
+    )
+    fig_payback.update_layout(
+        showlegend=False,
+        hovermode="closest",
+        margin=dict(l=150, r=20, t=40, b=20)
+    )
+    st.plotly_chart(fig_payback, use_container_width=True)
 
 st.divider()
 
-# ========== INVESTMENT SUMMARY ==========
-st.markdown("### 💰 Resumo de Investimento")
+# ========== SAVINGS ANALYSIS ==========
+st.markdown("### 💰 Análise de Economia")
 
-col1, col2, col3 = st.columns(3)
+savings_col1, savings_col2 = st.columns(2)
 
-total_implementation = sum(c.rpa_implementation_cost for c in calculations)
-total_monthly_cost = sum(c.rpa_monthly_cost for c in calculations)
-total_monthly_savings = sum(c.monthly_savings for c in calculations)
+with savings_col1:
+    # Monthly vs Annual Savings
+    savings_data = pd.DataFrame([
+        {
+            "Processo": c.process_name,
+            "Mensal": c.monthly_savings,
+            "Anual": c.annual_savings
+        }
+        for c in sorted(calculations, key=lambda x: x.annual_savings, reverse=True)[:8]
+    ])
+    
+    fig_savings = go.Figure(data=[
+        go.Bar(name="Mensal", x=savings_data["Processo"], y=savings_data["Mensal"]),
+        go.Bar(name="Anual", x=savings_data["Processo"], y=savings_data["Anual"])
+    ])
+    fig_savings.update_layout(
+        title="Economia Mensal vs Anual (Top 8)",
+        barmode="group",
+        height=400,
+        hovermode="x unified",
+        margin=dict(b=80)
+    )
+    st.plotly_chart(fig_savings, use_container_width=True)
 
-with col1:
-    st.metric("Investimento Total", format_currency(total_implementation))
-
-with col2:
-    st.metric("Custo Mensal Total", format_currency(total_monthly_cost))
-
-with col3:
-    net_monthly_benefit = total_monthly_savings - total_monthly_cost
-    st.metric("Benefício Líquido Mensal", format_currency(net_monthly_benefit), 
-              delta=f"{(net_monthly_benefit/total_monthly_savings*100) if total_monthly_savings > 0 else 0:.0f}%" if net_monthly_benefit > 0 else None)
+with savings_col2:
+    # Investment vs Savings
+    top_processes = sorted(calculations, key=lambda x: x.annual_savings, reverse=True)[:8]
+    invest_data = pd.DataFrame([
+        {
+            "Processo": c.process_name,
+            "Investimento": c.rpa_implementation_cost,
+            "Economia Anual": c.annual_savings
+        }
+        for c in top_processes
+    ])
+    
+    fig_invest = px.scatter(
+        invest_data,
+        x="Investimento",
+        y="Economia Anual",
+        size="Economia Anual",
+        hover_name="Processo",
+        title="Investimento vs Economia Anual",
+        height=400,
+        color_discrete_sequence=["#636EFA"]
+    )
+    fig_invest.update_layout(
+        hovermode="closest",
+        margin=dict(l=60, r=20, t=40, b=60)
+    )
+    st.plotly_chart(fig_invest, use_container_width=True)
 
 st.divider()
 
-# ========== PROCESS LIST ==========
-st.markdown("### 📋 Lista de Processos")
+# ========== TOP PERFORMERS CARDS ==========
+st.markdown("### 🏆 Destaques")
 
-# Create a simple dataframe for display
-data = []
+top_roi = max(calculations, key=lambda x: x.roi_percentage_first_year)
+top_savings = max(calculations, key=lambda x: x.annual_savings)
+fastest_payback = min(calculations, key=lambda x: x.payback_period_months)
+
+top_col1, top_col2, top_col3 = st.columns(3)
+
+with top_col1:
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white;'>
+        <h3 style='margin: 0;'>🎯 Maior ROI</h3>
+        <p style='font-size: 24px; font-weight: bold; margin: 10px 0;'>{:.1f}%</p>
+        <p style='margin: 5px 0; font-size: 14px;'><strong>{}</strong></p>
+        <p style='margin: 0; font-size: 12px; opacity: 0.9;'>Economia: {}</p>
+    </div>
+    """.format(
+        top_roi.roi_percentage_first_year,
+        top_roi.process_name,
+        format_currency(top_roi.annual_savings)
+    ), unsafe_allow_html=True)
+
+with top_col2:
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 10px; color: white;'>
+        <h3 style='margin: 0;'>💸 Maior Economia</h3>
+        <p style='font-size: 24px; font-weight: bold; margin: 10px 0;'>{}</p>
+        <p style='margin: 5px 0; font-size: 14px;'><strong>{}</strong></p>
+        <p style='margin: 0; font-size: 12px; opacity: 0.9;'>Payback: {:.1f} meses</p>
+    </div>
+    """.format(
+        format_currency(top_savings.annual_savings),
+        top_savings.process_name,
+        top_savings.payback_period_months
+    ), unsafe_allow_html=True)
+
+with top_col3:
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 20px; border-radius: 10px; color: white;'>
+        <h3 style='margin: 0;'>⚡ Payback Mais Rápido</h3>
+        <p style='font-size: 24px; font-weight: bold; margin: 10px 0;'>{:.1f} meses</p>
+        <p style='margin: 5px 0; font-size: 14px;'><strong>{}</strong></p>
+        <p style='margin: 0; font-size: 12px; opacity: 0.9;'>ROI: {:.1f}%</p>
+    </div>
+    """.format(
+        fastest_payback.payback_period_months,
+        fastest_payback.process_name,
+        fastest_payback.roi_percentage_first_year
+    ), unsafe_allow_html=True)
+
+st.divider()
+
+# ========== DETAILED TABLE ==========
+st.markdown("### 📋 Detalhes Completos")
+
+# Create detailed dataframe
+detailed_data = []
 for calc in calculations:
-    data.append({
+    detailed_data.append({
         "Processo": calc.process_name,
         "Departamento": getattr(calc, 'department', 'N/A'),
-        "Economia Anual": format_currency(calc.annual_savings),
-        "ROI %": f"{calc.roi_percentage_first_year:.1f}%",
-        "Payback": f"{calc.payback_period_months:.1f} meses",
-        "Status": "✅ Ativo",
+        "Investimento": format_currency(calc.rpa_implementation_cost),
+        "Economia/Mês": format_currency(calc.monthly_savings),
+        "Economia/Ano": format_currency(calc.annual_savings),
+        "ROI (%)": f"{calc.roi_percentage_first_year:.1f}%",
+        "Payback": f"{calc.payback_period_months:.1f}m",
+        "Automação": f"{calc.expected_automation_percentage:.0f}%",
     })
 
-# Display with native streamlit table (simpler and cleaner)
-st.dataframe(data, width='stretch', hide_index=True)
+df_detailed = pd.DataFrame(detailed_data)
+
+# Display with styling
+st.dataframe(
+    df_detailed,
+    use_container_width=True,
+    hide_index=True,
+    column_config={
+        "Processo": st.column_config.TextColumn(width="large"),
+        "Departamento": st.column_config.TextColumn(width="medium"),
+        "Investimento": st.column_config.TextColumn(width="medium"),
+        "Economia/Mês": st.column_config.TextColumn(width="medium"),
+        "Economia/Ano": st.column_config.TextColumn(width="medium"),
+        "ROI (%)": st.column_config.TextColumn(width="small"),
+        "Payback": st.column_config.TextColumn(width="small"),
+        "Automação": st.column_config.TextColumn(width="small"),
+    }
+)
 
 st.divider()
 
-# ========== DISTRIBUTION INFO ==========
-st.markdown("### 📈 Distribuição")
+# ========== SUMMARY STATISTICS ==========
+st.markdown("### 📊 Distribuição e Estatísticas")
 
-col1, col2 = st.columns(2)
+stat_col1, stat_col2, stat_col3 = st.columns(3)
 
-with col1:
-    st.subheader("Complexidade")
+with stat_col1:
+    st.markdown("#### Complexidade")
     complexity_counts = {}
     for calc in calculations:
         complexity = getattr(calc, 'complexity', 'Não definida')
         complexity_counts[complexity] = complexity_counts.get(complexity, 0) + 1
     
-    for complexity, count in complexity_counts.items():
-        st.write(f"• {complexity}: {count} processo(s)")
+    complexity_df = pd.DataFrame(
+        list(complexity_counts.items()),
+        columns=["Nível", "Quantidade"]
+    )
+    fig_complexity = px.pie(
+        complexity_df,
+        values="Quantidade",
+        names="Nível",
+        title="Distribuição de Complexidade",
+        height=300
+    )
+    st.plotly_chart(fig_complexity, use_container_width=True)
 
-with col2:
-    st.subheader("Status de Automação")
-    automatable = len([c for c in calculations if c.expected_automation_percentage >= 70])
-    partial = len([c for c in calculations if 30 <= c.expected_automation_percentage < 70])
-    complex_ones = len([c for c in calculations if c.expected_automation_percentage < 30])
+with stat_col2:
+    st.markdown("#### Potencial de Automação")
+    automation_ranges = {
+        "Altamente Automatizável (≥70%)": len([c for c in calculations if c.expected_automation_percentage >= 70]),
+        "Parcialmente (30-70%)": len([c for c in calculations if 30 <= c.expected_automation_percentage < 70]),
+        "Complexo (<30%)": len([c for c in calculations if c.expected_automation_percentage < 30]),
+    }
     
-    st.write(f"• Altamente Automatizável (≥70%): {automatable}")
-    st.write(f"• Parcialmente Automatizável (30-70%): {partial}")
-    st.write(f"• Complexo (<30%): {complex_ones}")
+    automation_df = pd.DataFrame(
+        list(automation_ranges.items()),
+        columns=["Categoria", "Quantidade"]
+    )
+    fig_automation = px.pie(
+        automation_df,
+        values="Quantidade",
+        names="Categoria",
+        title="Potencial de Automação",
+        height=300
+    )
+    st.plotly_chart(fig_automation, use_container_width=True)
+
+with stat_col3:
+    st.markdown("#### Status de Payback")
+    payback_ranges = {
+        "Rápido (<6 meses)": len([c for c in calculations if c.payback_period_months < 6]),
+        "Médio (6-12 meses)": len([c for c in calculations if 6 <= c.payback_period_months <= 12]),
+        "Longo (>12 meses)": len([c for c in calculations if c.payback_period_months > 12]),
+    }
+    
+    payback_df = pd.DataFrame(
+        list(payback_ranges.items()),
+        columns=["Categoria", "Quantidade"]
+    )
+    fig_payback_dist = px.pie(
+        payback_df,
+        values="Quantidade",
+        names="Categoria",
+        title="Distribuição de Payback",
+        height=300
+    )
+    st.plotly_chart(fig_payback_dist, use_container_width=True)

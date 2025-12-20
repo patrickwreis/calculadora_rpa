@@ -65,7 +65,7 @@ class TestSafePayback:
             rpa_monthly_cost=200,
             monthly_savings=1000,
             annual_savings=12000,
-            payback_period_months=0.0,
+            payback_period_months=None,
             roi_first_year=7000,
             roi_percentage_first_year=140,
         )
