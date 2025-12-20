@@ -43,8 +43,9 @@ st.markdown("""
 # Initialize database
 db_manager = DatabaseManager()
 
-# Get calculations
-calculations = db_manager.get_all_calculations()
+# Get calculations with loading indicator
+with st.spinner("⏳ Carregando dados do dashboard..."):
+    calculations = db_manager.get_all_calculations(use_cache=True)
 
 if not calculations:
     st.info("📋 Nenhum processo cadastrado ainda. Comece criando um novo cálculo na aba 'Novo Processo'!")
@@ -58,11 +59,12 @@ st.divider()
 # ========== KEY METRICS SECTION ==========
 st.markdown("### 📈 Indicadores Principais")
 
-total_processes = len(calculations)
-total_annual_savings = sum(c.annual_savings for c in calculations)
-total_investment = sum(c.rpa_implementation_cost for c in calculations)
-avg_roi = sum(c.roi_percentage_first_year for c in calculations) / len(calculations)
-avg_payback = sum(c.payback_period_months for c in calculations) / len(calculations)
+with st.spinner("📊 Calculando métricas..."):
+    total_processes = len(calculations)
+    total_annual_savings = sum(c.annual_savings for c in calculations)
+    total_investment = sum(c.rpa_implementation_cost for c in calculations)
+    avg_roi = sum(c.roi_percentage_first_year for c in calculations) / len(calculations)
+    avg_payback = sum(c.payback_period_months for c in calculations) / len(calculations)
 
 col1, col2, col3, col4, col5 = st.columns(5)
 

@@ -529,25 +529,26 @@ if st.session_state.show_results and st.session_state.calculator_results:
     
     with col1:
         if st.button("Salvar Cálculo", width="stretch"):
-            try:
-                fines_avoided = st.session_state.calculator_results.get("fines_avoided", 0)
-                sql_savings = st.session_state.calculator_results.get("sql_savings", 0)
-                total_monthly_savings = result.monthly_savings + fines_avoided + sql_savings
-                
-                calculation_data = {
-                    # Basic Information
-                    "process_name": roi_input.process_name,
-                    "department": st.session_state.calculator_results.get("department", ""),
+            with st.spinner("💾 Salvando cálculo..."):
+                try:
+                    fines_avoided = st.session_state.calculator_results.get("fines_avoided", 0)
+                    sql_savings = st.session_state.calculator_results.get("sql_savings", 0)
+                    total_monthly_savings = result.monthly_savings + fines_avoided + sql_savings
                     
-                    # Process Characteristics
-                    "people_involved": roi_input.people_involved,
-                    "current_time_per_month": roi_input.current_time_per_month,
-                    "hourly_rate": roi_input.hourly_rate,
-                    "complexity": st.session_state.calculator_results.get("complexity", "Média"),
-                    "systems_quantity": st.session_state.calculator_results.get("systems_quantity", 1),
-                    "daily_transactions": st.session_state.calculator_results.get("daily_transactions", 100),
-                    "error_rate": st.session_state.calculator_results.get("error_rate", 0),
-                    "exception_rate": st.session_state.calculator_results.get("exception_rate", 0),
+                    calculation_data = {
+                        # Basic Information
+                        "process_name": roi_input.process_name,
+                        "department": st.session_state.calculator_results.get("department", ""),
+                        
+                        # Process Characteristics
+                        "people_involved": roi_input.people_involved,
+                        "current_time_per_month": roi_input.current_time_per_month,
+                        "hourly_rate": roi_input.hourly_rate,
+                        "complexity": st.session_state.calculator_results.get("complexity", "Média"),
+                        "systems_quantity": st.session_state.calculator_results.get("systems_quantity", 1),
+                        "daily_transactions": st.session_state.calculator_results.get("daily_transactions", 100),
+                        "error_rate": st.session_state.calculator_results.get("error_rate", 0),
+                        "exception_rate": st.session_state.calculator_results.get("exception_rate", 0),
                     
                     # Automation Settings
                     "expected_automation_percentage": roi_input.expected_automation_percentage,
@@ -569,9 +570,19 @@ if st.session_state.show_results and st.session_state.calculator_results:
                     "payback_period_months": roi_input.rpa_implementation_cost / total_monthly_savings if total_monthly_savings > 0 else 0,
                     "roi_first_year": (total_monthly_savings * 12 - roi_input.rpa_implementation_cost),
                     "roi_percentage_first_year": ((total_monthly_savings * 12 - roi_input.rpa_implementation_cost) / roi_input.rpa_implementation_cost * 100),
-                }
-                
-                db_manager.save_calculation(calculation_data)
+                    }
+                    
+                    db_manager.save_calculation(calculation_data)
+                    st.success("✅ Cálculo salvo com sucesso!")
+                    
+                    # Clear calculator results and cache
+                    st.session_state.show_results = False
+                    st.session_state.calculator_results = None
+                    db_manager.clear_cache()
+                    
+                    import time
+                    time.sleep(1)
+                    st.rerun()
                 st.success("✅ Cálculo salvo com sucesso! Veja o histórico na aba 'Histórico de Resultados'")
             except Exception as e:
                 st.error(f"❌ Erro ao salvar: {str(e)}")
