@@ -9,6 +9,7 @@ from config import APP_NAME
 from src.calculator.utils import format_currency, format_percentage
 from src.database import DatabaseManager
 from src.ui.components import page_header
+from src.ui import EmptyStateManager
 
 # Page config
 st.set_page_config(
@@ -47,11 +48,11 @@ db_manager = DatabaseManager()
 with st.spinner("⏳ Carregando dados do dashboard..."):
     success, calculations, error_msg = db_manager.get_all_calculations(use_cache=True)
     if not success:
-        st.error(f"Erro ao carregar dashboard: {error_msg}")
+        EmptyStateManager.show_error_message(f"Erro ao carregar dashboard: {error_msg}")
         st.stop()
 
 if not calculations:
-    st.info("📋 Nenhum processo cadastrado ainda. Comece criando um novo cálculo na aba 'Novo Processo'!")
+    EmptyStateManager.show_no_processes_empty_state()
     st.stop()
 
 # ========== HEADER ==========

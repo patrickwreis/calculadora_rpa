@@ -10,6 +10,7 @@ import streamlit as st
 from src.calculator.utils import format_currency, format_percentage
 from src.database import DatabaseManager
 from src.export import ExportManager
+from src.ui import EmptyStateManager
 
 
 def load_data():

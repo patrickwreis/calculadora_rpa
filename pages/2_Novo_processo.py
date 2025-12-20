@@ -9,6 +9,7 @@ from src.calculator import ROICalculator, ROIInput
 from src.calculator.utils import format_currency, format_percentage, format_months, validate_input, InputValidator
 from src.database import DatabaseManager
 from src.ui.components import page_header
+from src.ui import EmptyStateManager
 
 # Page config
 st.set_page_config(
