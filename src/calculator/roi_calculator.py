@@ -13,7 +13,8 @@ class ROIInput:
     hourly_rate: float  # currency per hour
     rpa_implementation_cost: float
     rpa_monthly_cost: float
-    expected_automation_percentage: float  # 0-100
+    expected_automation_percentage: float  # 0-100: % of process that will be automated
+    exception_rate: float = 0.0  # 0-100: % of automated work that still needs manual review
     
 
 @dataclass
@@ -35,7 +36,15 @@ class ROICalculator:
     
     def calculate(self, input_data: ROIInput) -> ROIResult:
         """
-        Calculate ROI metrics based on input data
+        Calculate ROI metrics based on input data using correct automation formula.
+        
+        Formula breakdown:
+        - fully_automated_pct = expected_automation_percentage × (1 - exception_rate/100)
+        - partial_review_pct = expected_automation_percentage × exception_rate/100
+        - still_manual_pct = 100 - expected_automation_percentage
+        - total_manual_effort = partial_review_pct + still_manual_pct
+        
+        Cost after automation = current_monthly_cost × (total_manual_effort_pct / 100)
         
         Args:
             input_data: ROIInput object with calculation parameters
@@ -50,9 +59,17 @@ class ROICalculator:
             input_data.hourly_rate
         )
         
-        # Expected monthly cost after automation
-        automation_factor = input_data.expected_automation_percentage / 100
-        automated_cost = current_monthly_cost * (1 - automation_factor)
+        # Calculate actual automation metrics
+        from src.calculator.utils import calculate_automation_metrics
+        
+        metrics = calculate_automation_metrics(
+            expected_automation_percentage=input_data.expected_automation_percentage,
+            exception_rate=input_data.exception_rate
+        )
+        
+        # Cost after automation = current cost × (total manual effort % / 100)
+        manual_effort_ratio = metrics["total_manual_effort_pct"] / 100.0
+        automated_cost = current_monthly_cost * manual_effort_ratio
         
         # Monthly savings
         monthly_savings = current_monthly_cost - automated_cost
@@ -71,11 +88,11 @@ class ROICalculator:
         roi_first_year = annual_savings - input_data.rpa_implementation_cost
         roi_percentage = (roi_first_year / input_data.rpa_implementation_cost) * 100 if input_data.rpa_implementation_cost > 0 else 0
         
-        # Automation capacity (hours per month freed up)
+        # Automation capacity (hours per month freed up - ONLY fully automated portion)
         # Total hours per month = current_time_per_month * people_involved
-        # Hours freed = total_hours * automation_percentage / 100
+        # Hours truly freed = total_hours * fully_automated_pct / 100
         total_hours_per_month = input_data.current_time_per_month * input_data.people_involved
-        automation_capacity = total_hours_per_month * (input_data.expected_automation_percentage / 100)
+        automation_capacity = total_hours_per_month * (metrics["fully_automated_pct"] / 100.0)
         
         return ROIResult(
             monthly_savings=monthly_savings,

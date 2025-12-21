@@ -208,23 +208,45 @@ def edit_process_modal():
             )
         
         with col2:
+            expected_automation_percentage = st.number_input(
+                "% do Processo que SERÁ AUTOMATIZADO",
+                value=float(selected_calc.expected_automation_percentage),
+                min_value=0.0,
+                max_value=100.0,
+                step=5.0,
+                help="De 100% do processo, qual porcentagem será possível automatizar?"
+            )
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
             exception_rate = st.number_input(
-                "Taxa de Exceção (%)",
+                "% de Revisão Manual NOS AUTOMATIZADOS",
                 value=float(getattr(selected_calc, 'exception_rate', 0)),
                 min_value=0.0,
                 max_value=100.0,
-                step=1.0
+                step=1.0,
+                help=f"Dos {expected_automation_percentage:.0f}% automatizados, qual % ainda precisa de revisão/validação manual?"
             )
         
-        # Automação
-        st.markdown("### ⚙️ Automação")
-        automation_pct = st.number_input(
-            "Automação Esperada (%)",
-            value=float(selected_calc.expected_automation_percentage),
-            min_value=0.0,
-            max_value=100.0,
-            step=1.0
-        )
+        with col2:
+            # Visual breakdown of automation
+            from src.calculator.utils import calculate_automation_metrics
+            
+            metrics = calculate_automation_metrics(
+                expected_automation_percentage=expected_automation_percentage,
+                exception_rate=exception_rate
+            )
+            
+            st.markdown("**📊 Breakdown da Automação:**")
+            st.info(f"""
+✅ **{metrics['fully_automated_pct']:.1f}%** → Operacional (100% automático)  
+⚠️ **{metrics['partial_review_pct']:.1f}%** → Precisa revisão manual  
+👤 **{metrics['still_manual_pct']:.1f}%** → Continua manual  
+━━━━━━━━━━━━━━━━━  
+📝 **{metrics['total_manual_effort_pct']:.1f}%** → Total que precisa trabalho manual
+            """)
+
         
         # Custos de Implementação
         st.markdown("### 💰 Custos de Implementação")
@@ -308,7 +330,8 @@ def edit_process_modal():
                     hourly_rate=float(hourly_rate),
                     rpa_implementation_cost=float(impl_cost),
                     rpa_monthly_cost=float(monthly_rpa_cost),
-                    expected_automation_percentage=float(automation_pct),
+                    expected_automation_percentage=float(expected_automation_percentage),
+                    exception_rate=float(exception_rate),
                 )
                 
                 # Calculate base ROI
@@ -338,7 +361,7 @@ def edit_process_modal():
                     "exception_rate": float(exception_rate),
                     
                     # Automation Settings
-                    "expected_automation_percentage": float(automation_pct),
+                    "expected_automation_percentage": float(expected_automation_percentage),
                     
                     # Implementation Costs
                     "rpa_implementation_cost": float(impl_cost),
