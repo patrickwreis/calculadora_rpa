@@ -168,7 +168,7 @@ with st.form("roi_form"):
             "% do Processo que SERÁ AUTOMATIZADO",
             min_value=0.0,
             max_value=100.0,
-            value=int(default_automation * 100),
+            value=float(default_automation * 100),
             step=5.0,
             help="De 100% do processo, qual porcentagem será possível automatizar?"
         )
