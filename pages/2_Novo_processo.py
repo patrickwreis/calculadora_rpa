@@ -47,7 +47,7 @@ st.markdown("Informe os dados atuais do processo que será automatizado para cal
 with st.form("roi_form"):
     
     # Basic Information Section
-    st.markdown("### Informações Básicas")
+    st.markdown("### 📋 Informações Básicas")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -114,7 +114,7 @@ with st.form("roi_form"):
     current_time_per_month = hours_per_day * days_per_month
     
     # Process Characteristics Section
-    st.markdown("### Características do Processo")
+    st.markdown("### 🔧 Características do Processo")
     
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -204,7 +204,7 @@ with st.form("roi_form"):
 
     
     # Implementation Section - Development Costs
-    st.markdown("### Custos de Implementação")
+    st.markdown("### 💰 Custos de Implementação")
     
     st.markdown("#### Custos de Desenvolvimento")
     
@@ -279,7 +279,7 @@ with st.form("roi_form"):
     total_monthly_cost = monthly_cost + infra_license_cost
     
     # Additional Benefits Section
-    st.markdown("### Outros Benefícios")
+    st.markdown("### 🎁 Outros Benefícios")
     
     col1, col2 = st.columns(2)
     with col1:
