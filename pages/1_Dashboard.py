@@ -9,6 +9,7 @@ from config import APP_NAME
 from src.calculator.utils import format_currency, format_percentage
 from src.database import DatabaseManager
 from src.ui.components import page_header
+from src.ui import EmptyStateManager
 
 # Page config
 st.set_page_config(
@@ -43,11 +44,15 @@ st.markdown("""
 # Initialize database
 db_manager = DatabaseManager()
 
-# Get calculations
-calculations = db_manager.get_all_calculations()
+# Get calculations with loading indicator
+with st.spinner("⏳ Carregando dados do dashboard..."):
+    success, calculations, error_msg = db_manager.get_all_calculations(use_cache=True)
+    if not success:
+        EmptyStateManager.show_error_message(f"Erro ao carregar dashboard: {error_msg}")
+        st.stop()
 
 if not calculations:
-    st.info("📋 Nenhum processo cadastrado ainda. Comece criando um novo cálculo na aba 'Novo Processo'!")
+    EmptyStateManager.show_no_processes_empty_state()
     st.stop()
 
 # ========== HEADER ==========
@@ -58,11 +63,12 @@ st.divider()
 # ========== KEY METRICS SECTION ==========
 st.markdown("### 📈 Indicadores Principais")
 
-total_processes = len(calculations)
-total_annual_savings = sum(c.annual_savings for c in calculations)
-total_investment = sum(c.rpa_implementation_cost for c in calculations)
-avg_roi = sum(c.roi_percentage_first_year for c in calculations) / len(calculations)
-avg_payback = sum(c.payback_period_months for c in calculations) / len(calculations)
+with st.spinner("📊 Calculando métricas..."):
+    total_processes = len(calculations)
+    total_annual_savings = sum(c.annual_savings for c in calculations)
+    total_investment = sum(c.rpa_implementation_cost for c in calculations)
+    avg_roi = sum(c.roi_percentage_first_year for c in calculations) / len(calculations)
+    avg_payback = sum(c.payback_period_months for c in calculations) / len(calculations)
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -134,7 +140,7 @@ with chart_col1:
         hovermode="closest",
         margin=dict(l=150, r=20, t=40, b=20)
     )
-    st.plotly_chart(fig_roi, use_container_width=True)
+    st.plotly_chart(fig_roi)
 
 # Chart 2: Payback Timeline
 with chart_col2:
@@ -158,7 +164,7 @@ with chart_col2:
         hovermode="closest",
         margin=dict(l=150, r=20, t=40, b=20)
     )
-    st.plotly_chart(fig_payback, use_container_width=True)
+    st.plotly_chart(fig_payback)
 
 st.divider()
 
@@ -189,7 +195,7 @@ with savings_col1:
         hovermode="x unified",
         margin=dict(b=80)
     )
-    st.plotly_chart(fig_savings, use_container_width=True)
+    st.plotly_chart(fig_savings)
 
 with savings_col2:
     # Investment vs Savings
@@ -217,7 +223,7 @@ with savings_col2:
         hovermode="closest",
         margin=dict(l=60, r=20, t=40, b=60)
     )
-    st.plotly_chart(fig_invest, use_container_width=True)
+    st.plotly_chart(fig_invest)
 
 st.divider()
 
@@ -296,7 +302,6 @@ df_detailed = pd.DataFrame(detailed_data)
 # Display with styling
 st.dataframe(
     df_detailed,
-    use_container_width=True,
     hide_index=True,
     column_config={
         "Processo": st.column_config.TextColumn(width="large"),
@@ -335,7 +340,7 @@ with stat_col1:
         title="Distribuição de Complexidade",
         height=300
     )
-    st.plotly_chart(fig_complexity, use_container_width=True)
+    st.plotly_chart(fig_complexity)
 
 with stat_col2:
     st.markdown("#### Potencial de Automação")
@@ -356,7 +361,7 @@ with stat_col2:
         title="Potencial de Automação",
         height=300
     )
-    st.plotly_chart(fig_automation, use_container_width=True)
+    st.plotly_chart(fig_automation)
 
 with stat_col3:
     st.markdown("#### Status de Payback")
@@ -377,4 +382,4 @@ with stat_col3:
         title="Distribuição de Payback",
         height=300
     )
-    st.plotly_chart(fig_payback_dist, use_container_width=True)
+    st.plotly_chart(fig_payback_dist)

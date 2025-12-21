@@ -31,10 +31,13 @@ st.markdown("Veja quais processos têm melhor desempenho em ROI, Payback e Econo
 st.divider()
 
 # Get calculations
-calculations = db_manager.get_all_calculations()
+success, calculations, error_msg = db_manager.get_all_calculations()
 
-if not calculations:
-    st.info("📋 Nenhum cálculo salvo ainda. Comece criando um novo cálculo!")
+if not success or not calculations:
+    if error_msg:
+        st.error(f"❌ Erro ao carregar cálculos: {error_msg}")
+    else:
+        st.info("📋 Nenhum cálculo salvo ainda. Comece criando um novo cálculo!")
     st.stop()
 
 # ========== TOP 3 PODIUM ==========
@@ -130,7 +133,7 @@ with tab1:
             hovermode="closest",
             margin=dict(l=200, r=20, t=40, b=20)
         )
-        st.plotly_chart(fig_roi, use_container_width=True)
+        st.plotly_chart(fig_roi, key="rank_fig_roi")
     
     with col2:
         st.markdown("#### 🎯 Estatísticas de ROI")
@@ -173,7 +176,7 @@ with tab2:
             hovermode="closest",
             margin=dict(l=200, r=20, t=40, b=20)
         )
-        st.plotly_chart(fig_payback, use_container_width=True)
+        st.plotly_chart(fig_payback, key="rank_fig_payback")
     
     with col2:
         st.markdown("#### ⏳ Estatísticas de Payback")
@@ -226,7 +229,7 @@ with tab3:
             hovermode="closest",
             margin=dict(l=200, r=20, t=40, b=20)
         )
-        st.plotly_chart(fig_savings, use_container_width=True)
+        st.plotly_chart(fig_savings, key="rank_fig_savings")
     
     with col2:
         st.markdown("#### 💵 Estatísticas de Economia")
@@ -258,7 +261,6 @@ with tab4:
     
     st.dataframe(
         comparison_df,
-        use_container_width=True,
         hide_index=True,
         column_config={
             "Posição": st.column_config.NumberColumn(width="small"),
@@ -305,7 +307,7 @@ with tab4:
         margin=dict(l=60, r=20, t=60, b=60)
     )
     
-    st.plotly_chart(fig_scatter, use_container_width=True)
+    st.plotly_chart(fig_scatter, key="rank_fig_scatter")
 
 st.divider()
 

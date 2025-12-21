@@ -6,9 +6,11 @@ import pandas as pd
 import streamlit as st
 
 from config import APP_NAME
+from src.calculator import ROICalculator, ROIInput, ROIResult
 from src.calculator.utils import format_currency, format_percentage, format_months
 from src.database import DatabaseManager
 from src.ui.components import page_header
+from src.ui import EmptyStateManager
 
 # Page config
 st.set_page_config(
@@ -18,14 +20,19 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Initialize database
+# Initialize database and calculator
 db_manager = DatabaseManager()
+calculator = ROICalculator()
 
 # Page header
 page_header("Histórico de Processos", "Visualize, edite e gerencie todos os seus cálculos de ROI")
 
-# Get calculations
-calculations = db_manager.get_all_calculations()
+# Get calculations with loading indicator
+with st.spinner("⏳ Carregando processos..."):
+    success, calculations, error_msg = db_manager.get_all_calculations(use_cache=True)
+    if not success:
+        st.error(f"Erro ao carregar processos: {error_msg}")
+        st.stop()
 
 if not calculations:
     st.info("📋 Nenhum processo salvo ainda. Comece criando um novo cálculo!")
@@ -160,10 +167,17 @@ def edit_process_modal():
         col1, col2, col3 = st.columns(3)
         
         with col1:
+            # Normalize complexity value to handle both 'Media' and 'Média'
+            complexity_options = ["Baixa", "Média", "Alta"]
+            current_complexity = getattr(selected_calc, 'complexity', 'Média')
+            # Handle 'Media' (no accent) from database
+            if current_complexity == 'Media':
+                current_complexity = 'Média'
+            
             complexity = st.selectbox(
                 "Complexidade",
-                ["Baixa", "Média", "Alta"],
-                index=["Baixa", "Média", "Alta"].index(getattr(selected_calc, 'complexity', 'Média'))
+                complexity_options,
+                index=complexity_options.index(current_complexity) if current_complexity in complexity_options else 1
             )
         
         with col2:
@@ -188,18 +202,18 @@ def edit_process_modal():
             error_rate = st.number_input(
                 "Taxa de Erro (%)",
                 value=float(getattr(selected_calc, 'error_rate', 0)),
-                min_value=0,
-                max_value=100,
-                step=1
+                min_value=0.0,
+                max_value=100.0,
+                step=1.0
             )
         
         with col2:
             exception_rate = st.number_input(
                 "Taxa de Exceção (%)",
                 value=float(getattr(selected_calc, 'exception_rate', 0)),
-                min_value=0,
-                max_value=100,
-                step=1
+                min_value=0.0,
+                max_value=100.0,
+                step=1.0
             )
         
         # Automação
@@ -229,9 +243,9 @@ def edit_process_modal():
             maintenance_percentage = st.number_input(
                 "Manutenção Anual (% do desenvolvimento)",
                 value=float(getattr(selected_calc, 'maintenance_percentage', 10)),
-                min_value=0,
-                max_value=100,
-                step=1
+                min_value=0.0,
+                max_value=100.0,
+                step=1.0
             )
         
         col1, col2 = st.columns(2)
@@ -286,10 +300,27 @@ def edit_process_modal():
         
         with col1:
             if st.form_submit_button("💾 Salvar", type="primary", width='stretch'):
-                # Recalculate savings including additional benefits
-                base_savings = (current_time * people * hourly_rate * automation_pct / 100)
-                monthly_savings = base_savings + fines_avoided + sql_savings
-                annual_savings = monthly_savings * 12
+                # Create ROI input for base calculation
+                roi_input = ROIInput(
+                    process_name=process_name,
+                    current_time_per_month=float(current_time),
+                    people_involved=int(people),
+                    hourly_rate=float(hourly_rate),
+                    rpa_implementation_cost=float(impl_cost),
+                    rpa_monthly_cost=float(monthly_rpa_cost),
+                    expected_automation_percentage=float(automation_pct),
+                )
+                
+                # Calculate base ROI
+                base_result = calculator.calculate(roi_input)
+                
+                # Calculate extended ROI with additional benefits
+                extended_metrics = calculator.calculate_extended_roi(
+                    base_result=base_result,
+                    implementation_cost=float(impl_cost),
+                    fines_avoided=float(fines_avoided),
+                    sql_savings=float(sql_savings)
+                )
                 
                 update_data = {
                     # Basic Information
@@ -321,21 +352,28 @@ def edit_process_modal():
                     "sql_savings": float(sql_savings),
                     
                     # Calculated Results
-                    "monthly_savings": monthly_savings,
-                    "annual_savings": annual_savings,
-                    "payback_period_months": impl_cost / monthly_savings if monthly_savings > 0 else 0,
-                    "roi_first_year": (annual_savings - impl_cost),
-                    "roi_percentage_first_year": ((annual_savings - impl_cost) / impl_cost * 100) if impl_cost > 0 else 0,
+                    "monthly_savings": extended_metrics["total_monthly_savings"],
+                    "annual_savings": extended_metrics["total_annual_savings"],
+                    "payback_period_months": extended_metrics["payback_period_months"],
+                    "roi_first_year": extended_metrics["economia_1year"],
+                    "roi_percentage_first_year": extended_metrics["roi_1year_percentage"],
                     
                     # Timestamp
                     "updated_at": datetime.utcnow(),
                 }
                 
-                db_manager.update_calculation(selected_id, update_data)
-                st.success("✅ Processo atualizado com sucesso!")
-                st.session_state.edit_modal = False
-                st.sleep(0.5)
-                st.rerun()
+                with st.spinner("💾 Atualizando processo..."):
+                    success, updated_calc, error_msg = db_manager.update_calculation(selected_id, update_data)
+                    db_manager.clear_cache()
+                    
+                    if success:
+                        st.success("✅ Processo atualizado com sucesso!")
+                        st.session_state.edit_modal = False
+                        import time
+                        time.sleep(0.5)
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Erro ao atualizar: {error_msg}")
         
         with col2:
             if st.form_submit_button("❌ Cancelar", width='stretch'):
@@ -353,13 +391,18 @@ def delete_confirmation_modal():
     
     with col1:
         if st.button("✅ Sim, Excluir", type="secondary", width='stretch', key="confirm_delete"):
-            if db_manager.delete_calculation(selected_id):
-                st.success("✅ Processo excluído com sucesso!")
-                st.session_state.delete_modal = False
-                st.sleep(0.5)
-                st.rerun()
-            else:
-                st.error("❌ Erro ao excluir o processo")
+            with st.spinner("⏳ Excluindo processo..."):
+                success, error_msg = db_manager.delete_calculation(selected_id)
+                db_manager.clear_cache()
+                
+                if success:
+                    st.success("✅ Processo excluído com sucesso!")
+                    st.session_state.delete_modal = False
+                    import time
+                    time.sleep(0.5)
+                    st.rerun()
+                else:
+                    st.error(f"❌ Erro ao excluir: {error_msg}")
     
     with col2:
         if st.button("❌ Cancelar", width='stretch', key="cancel_delete"):

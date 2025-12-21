@@ -1,6 +1,217 @@
 # -*- coding: utf-8 -*-
 """Utility functions for calculations"""
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple, Optional
+
+
+class ValidationError(Exception):
+    """Custom exception for validation errors"""
+    pass
+
+
+class InputValidator:
+    """Validator for RPA ROI calculation inputs"""
+    
+    @staticmethod
+    def validate_percentage(value: float, field_name: str, allow_zero: bool = True) -> Tuple[bool, Optional[str]]:
+        """
+        Validate percentage values (0-100)
+        
+        Args:
+            value: The percentage value to validate
+            field_name: Name of the field for error messages
+            allow_zero: Whether to allow zero value
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        min_val = 0.0 if allow_zero else 0.01
+        if not (min_val <= value <= 100.0):
+            return False, f"{field_name} deve estar entre {min_val}% e 100%"
+        return True, None
+    
+    @staticmethod
+    def validate_positive_number(value: float, field_name: str, allow_zero: bool = True) -> Tuple[bool, Optional[str]]:
+        """
+        Validate positive numbers
+        
+        Args:
+            value: The value to validate
+            field_name: Name of the field for error messages
+            allow_zero: Whether to allow zero value
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        min_val = 0.0 if allow_zero else 0.01
+        if value < min_val:
+            return False, f"{field_name} deve ser {'maior ou igual a 0' if allow_zero else 'maior que 0'}"
+        return True, None
+    
+    @staticmethod
+    def validate_integer_range(value: int, field_name: str, min_val: int, max_val: int) -> Tuple[bool, Optional[str]]:
+        """
+        Validate integer within range
+        
+        Args:
+            value: The value to validate
+            field_name: Name of the field for error messages
+            min_val: Minimum allowed value
+            max_val: Maximum allowed value
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        if not (min_val <= value <= max_val):
+            return False, f"{field_name} deve estar entre {min_val} e {max_val}"
+        return True, None
+    
+    @staticmethod
+    def validate_cross_fields(
+        error_rate: float,
+        exception_rate: float,
+        expected_automation_percentage: float
+    ) -> Tuple[bool, Optional[str]]:
+        """
+        Validate cross-field dependencies
+        
+        Args:
+            error_rate: Error rate percentage
+            exception_rate: Exception rate percentage
+            expected_automation_percentage: Expected automation percentage
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        # Error rate + exception rate should not exceed 100%
+        total_issues = error_rate + exception_rate
+        if total_issues > 100.0:
+            return False, f"Taxa de erro ({error_rate}%) + Taxa de exceção ({exception_rate}%) não pode exceder 100%"
+        
+        # Automation percentage should be reasonable given exception rate
+        max_automation = 100.0 - exception_rate
+        if expected_automation_percentage > max_automation:
+            return False, f"Automação esperada ({expected_automation_percentage}%) não pode exceder {max_automation:.1f}% (considerando taxa de exceção de {exception_rate}%)"
+        
+        return True, None
+    
+    @classmethod
+    def validate_all_inputs(cls, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+        """
+        Validate all input data comprehensively
+        
+        Args:
+            data: Dictionary with all input fields
+            
+        Returns:
+            Tuple of (is_valid, list_of_error_messages)
+        """
+        errors = []
+        
+        # Validate required fields exist
+        required_fields = [
+            'process_name', 'current_time_per_month', 'people_involved',
+            'hourly_rate', 'rpa_implementation_cost', 'rpa_monthly_cost',
+            'expected_automation_percentage'
+        ]
+        
+        for field in required_fields:
+            if field not in data or data[field] is None:
+                errors.append(f"Campo obrigatório faltando: {field}")
+        
+        if errors:
+            return False, errors
+        
+        # Validate process name
+        if not isinstance(data['process_name'], str) or not data['process_name'].strip():
+            errors.append("Nome do processo não pode estar vazio")
+        
+        # Validate positive numbers
+        positive_fields = [
+            ('current_time_per_month', 'Tempo atual por mês', False),
+            ('hourly_rate', 'Taxa horária', False),
+            ('rpa_implementation_cost', 'Custo de implementação', True),
+            ('rpa_monthly_cost', 'Custo mensal RPA', True),
+        ]
+        
+        for field, label, allow_zero in positive_fields:
+            try:
+                value = float(data[field])
+                is_valid, error = cls.validate_positive_number(value, label, allow_zero)
+                if not is_valid:
+                    errors.append(error)
+            except (ValueError, TypeError):
+                errors.append(f"{label} deve ser um número válido")
+        
+        # Validate people_involved
+        try:
+            people = int(data['people_involved'])
+            is_valid, error = cls.validate_integer_range(people, 'Pessoas envolvidas', 1, 10000)
+            if not is_valid:
+                errors.append(error)
+        except (ValueError, TypeError):
+            errors.append("Pessoas envolvidas deve ser um número inteiro válido")
+        
+        # Validate percentages
+        percentage_fields = [
+            ('expected_automation_percentage', 'Percentual de automação esperado'),
+        ]
+        
+        for field, label in percentage_fields:
+            try:
+                value = float(data[field])
+                is_valid, error = cls.validate_percentage(value, label, allow_zero=True)
+                if not is_valid:
+                    errors.append(error)
+            except (ValueError, TypeError):
+                errors.append(f"{label} deve ser um número válido")
+        
+        # Validate optional percentage fields
+        optional_percentages = [
+            ('error_rate', 'Taxa de erro'),
+            ('exception_rate', 'Taxa de exceção'),
+            ('maintenance_percentage', 'Percentual de manutenção'),
+        ]
+        
+        for field, label in optional_percentages:
+            if field in data and data[field] is not None:
+                try:
+                    value = float(data[field])
+                    is_valid, error = cls.validate_percentage(value, label, allow_zero=True)
+                    if not is_valid:
+                        errors.append(error)
+                except (ValueError, TypeError):
+                    errors.append(f"{label} deve ser um número válido")
+        
+        # Validate cross-field dependencies
+        if all(k in data for k in ['error_rate', 'exception_rate', 'expected_automation_percentage']):
+            try:
+                is_valid, error = cls.validate_cross_fields(
+                    float(data.get('error_rate', 0)),
+                    float(data.get('exception_rate', 0)),
+                    float(data['expected_automation_percentage'])
+                )
+                if not is_valid:
+                    errors.append(error)
+            except (ValueError, TypeError):
+                pass  # Already caught in individual validations
+        
+        # Validate additional benefits (if present)
+        optional_positive = [
+            ('fines_avoided', 'Multas evitadas'),
+            ('sql_savings', 'SLA reduzida'),
+        ]
+        
+        for field, label in optional_positive:
+            if field in data and data[field] is not None:
+                try:
+                    value = float(data[field])
+                    is_valid, error = cls.validate_positive_number(value, label, allow_zero=True)
+                    if not is_valid:
+                        errors.append(error)
+                except (ValueError, TypeError):
+                    errors.append(f"{label} deve ser um número válido")
+        
+        return len(errors) == 0, errors
 
 
 def format_currency(value: float, currency: str = "BRL") -> str:
@@ -31,39 +242,13 @@ def format_months(months: float) -> str:
         return f"{remaining_months} mês{'es' if remaining_months > 1 else ''}"
 
 
-def validate_input(data: Dict[str, Any]) -> tuple[bool, str]:
+def validate_input(data: Dict[str, Any]) -> Tuple[bool, str]:
     """
-    Validate calculation input data
+    Validate calculation input data (legacy wrapper for compatibility)
     
     Returns:
         Tuple of (is_valid, error_message)
     """
-    required_fields = [
-        'process_name', 'current_time_per_month', 'people_involved',
-        'hourly_rate', 'rpa_implementation_cost', 'rpa_monthly_cost',
-        'expected_automation_percentage'
-    ]
-    
-    for field in required_fields:
-        if field not in data or data[field] is None:
-            return False, f"Campo obrigatório faltando: {field}"
-    
-    # Validate numeric fields
-    numeric_validations = {
-        'current_time_per_month': (0, float('inf')),
-        'people_involved': (1, 10000),
-        'hourly_rate': (0, float('inf')),
-        'rpa_implementation_cost': (0, float('inf')),
-        'rpa_monthly_cost': (0, float('inf')),
-        'expected_automation_percentage': (0, 100),
-    }
-    
-    for field, (min_val, max_val) in numeric_validations.items():
-        try:
-            value = float(data[field])
-            if not (min_val <= value <= max_val):
-                return False, f"{field} deve estar entre {min_val} e {max_val}"
-        except (ValueError, TypeError):
-            return False, f"{field} deve ser um número"
-    
-    return True, ""
+    is_valid, errors = InputValidator.validate_all_inputs(data)
+    error_message = errors[0] if errors else ""
+    return is_valid, error_message

@@ -172,56 +172,56 @@ class TestValidateInput:
         valid_input['current_time_per_month'] = -1
         is_valid, message = validate_input(valid_input)
         assert is_valid is False
-        assert "current_time_per_month" in message
+        assert "Tempo atual" in message or "current_time" in message.lower()
     
     def test_validate_input_people_zero(self, valid_input):
         """Test validation with zero people"""
         valid_input['people_involved'] = 0
         is_valid, message = validate_input(valid_input)
         assert is_valid is False
-        assert "people_involved" in message
+        assert "Pessoas" in message or "people" in message.lower()
     
     def test_validate_input_people_too_many(self, valid_input):
         """Test validation with too many people"""
         valid_input['people_involved'] = 10001
         is_valid, message = validate_input(valid_input)
         assert is_valid is False
-        assert "people_involved" in message
+        assert "Pessoas" in message or "people" in message.lower()
     
     def test_validate_input_hourly_rate_negative(self, valid_input):
         """Test validation with negative hourly rate"""
         valid_input['hourly_rate'] = -50
         is_valid, message = validate_input(valid_input)
         assert is_valid is False
-        assert "hourly_rate" in message
+        assert "horária" in message or "hourly" in message.lower()
     
     def test_validate_input_cost_negative(self, valid_input):
         """Test validation with negative cost"""
         valid_input['rpa_implementation_cost'] = -5000
         is_valid, message = validate_input(valid_input)
         assert is_valid is False
-        assert "rpa_implementation_cost" in message
+        assert "implementação" in message or "implementation" in message.lower()
     
     def test_validate_input_automation_percentage_below_zero(self, valid_input):
         """Test validation with percentage below 0"""
         valid_input['expected_automation_percentage'] = -1
         is_valid, message = validate_input(valid_input)
         assert is_valid is False
-        assert "expected_automation_percentage" in message
+        assert "automação" in message or "automation" in message.lower()
     
     def test_validate_input_automation_percentage_above_100(self, valid_input):
         """Test validation with percentage above 100"""
         valid_input['expected_automation_percentage'] = 101
         is_valid, message = validate_input(valid_input)
         assert is_valid is False
-        assert "expected_automation_percentage" in message
+        assert "automação" in message or "automation" in message.lower()
     
     def test_validate_input_non_numeric_field(self, valid_input):
         """Test validation with non-numeric value"""
         valid_input['hourly_rate'] = "not_a_number"
         is_valid, message = validate_input(valid_input)
         assert is_valid is False
-        assert "hourly_rate" in message
+        assert "horária" in message or "hourly" in message.lower() or "número" in message.lower()
     
     def test_validate_input_none_value(self, valid_input):
         """Test validation with None value"""

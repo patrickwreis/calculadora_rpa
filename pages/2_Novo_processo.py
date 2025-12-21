@@ -6,9 +6,10 @@ import streamlit as st
 
 from config import APP_NAME, APP_DESCRIPTION
 from src.calculator import ROICalculator, ROIInput
-from src.calculator.utils import format_currency, format_percentage, format_months, validate_input
+from src.calculator.utils import format_currency, format_percentage, format_months, validate_input, InputValidator
 from src.database import DatabaseManager
 from src.ui.components import page_header
+from src.ui import EmptyStateManager
 
 # Page config
 st.set_page_config(
@@ -292,11 +293,28 @@ with st.form("roi_form"):
     
     # Handle calculate button
     if calculate_btn:
-        # Validate inputs
-        if not process_name.strip():
-            st.error("❌ Por favor, insira o nome do processo")
-        elif not department.strip():
-            st.error("❌ Por favor, insira a área/departamento")
+        # Comprehensive validation
+        validation_data = {
+            'process_name': process_name,
+            'current_time_per_month': current_time_per_month,
+            'people_involved': people_involved,
+            'hourly_rate': hourly_rate,
+            'rpa_implementation_cost': impl_cost,
+            'rpa_monthly_cost': total_monthly_cost,
+            'expected_automation_percentage': automation_pct,
+            'error_rate': error_rate,
+            'exception_rate': exception_rate,
+            'fines_avoided': fines_avoided,
+            'sql_savings': sql_savings,
+            'maintenance_percentage': maintenance_percentage,
+        }
+        
+        is_valid, errors = InputValidator.validate_all_inputs(validation_data)
+        
+        if not is_valid:
+            st.error("❌ Erros na validação dos dados:")
+            for error in errors:
+                st.error(f"  • {error}")
         else:
             # Create input object and calculate
             input_dict = {
@@ -309,39 +327,43 @@ with st.form("roi_form"):
                 "expected_automation_percentage": automation_pct,
             }
             
-            is_valid, error_msg = validate_input(input_dict)
+            roi_input = ROIInput(**input_dict)
+            result = calculator.calculate(roi_input)
             
-            if not is_valid:
-                st.error(f"❌ {error_msg}")
-            else:
-                roi_input = ROIInput(**input_dict)
-                result = calculator.calculate(roi_input)
-                
-                # Store in session state with additional data
-                st.session_state.calculator_results = {
-                    "input": roi_input,
-                    "result": result,
-                    "timestamp": datetime.datetime.now(),
-                    "department": department,
-                    "complexity": complexity,
-                    "systems_quantity": systems_quantity,
-                    "daily_transactions": daily_transactions,
-                    "error_rate": error_rate,
-                    "exception_rate": exception_rate,
-                    "fines_avoided": fines_avoided,
-                    "sql_savings": sql_savings,
-                    "dev_hours": dev_hours,
-                    "dev_hourly_rate": dev_hourly_rate,
-                    "dev_total_cost": dev_total_cost,
-                    "other_costs": other_costs,
-                    "monthly_cost": monthly_cost,
-                    "infra_license_cost": infra_license_cost,
-                    "total_monthly_cost": total_monthly_cost,
-                    "maintenance_percentage": maintenance_percentage,
-                }
-                
-                st.session_state.show_results = True
-                st.rerun()
+            # Calculate extended ROI with additional benefits
+            extended_metrics = calculator.calculate_extended_roi(
+                base_result=result,
+                implementation_cost=impl_cost,
+                fines_avoided=fines_avoided,
+                sql_savings=sql_savings
+            )
+            
+            # Store in session state with additional data
+            st.session_state.calculator_results = {
+                "input": roi_input,
+                "result": result,
+                "extended_metrics": extended_metrics,
+                "timestamp": datetime.datetime.now(),
+                "department": department,
+                "complexity": complexity,
+                "systems_quantity": systems_quantity,
+                "daily_transactions": daily_transactions,
+                "error_rate": error_rate,
+                "exception_rate": exception_rate,
+                "fines_avoided": fines_avoided,
+                "sql_savings": sql_savings,
+                "dev_hours": dev_hours,
+                "dev_hourly_rate": dev_hourly_rate,
+                "dev_total_cost": dev_total_cost,
+                "other_costs": other_costs,
+                "monthly_cost": monthly_cost,
+                "infra_license_cost": infra_license_cost,
+                "total_monthly_cost": total_monthly_cost,
+                "maintenance_percentage": maintenance_percentage,
+            }
+            
+            st.session_state.show_results = True
+            st.rerun()
 
 # Display results if calculated
 if st.session_state.show_results and st.session_state.calculator_results:
@@ -350,20 +372,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
     
     result = st.session_state.calculator_results["result"]
     roi_input = st.session_state.calculator_results["input"]
-    fines_avoided = st.session_state.calculator_results.get("fines_avoided", 0)
-    sql_savings = st.session_state.calculator_results.get("sql_savings", 0)
-    
-    # Calculate totals with additional benefits
-    total_monthly_savings = result.monthly_savings + fines_avoided + sql_savings
-    
-    # Calculate ROI and Economia for 1, 2, and 5 years
-    roi_1year = ((total_monthly_savings * 12 - roi_input.rpa_implementation_cost) / roi_input.rpa_implementation_cost * 100)
-    roi_2years = ((total_monthly_savings * 24 - roi_input.rpa_implementation_cost) / roi_input.rpa_implementation_cost * 100)
-    roi_5years = ((total_monthly_savings * 60 - roi_input.rpa_implementation_cost) / roi_input.rpa_implementation_cost * 100)
-    
-    economia_1year = total_monthly_savings * 12 - roi_input.rpa_implementation_cost
-    economia_2years = total_monthly_savings * 24 - roi_input.rpa_implementation_cost
-    economia_5years = total_monthly_savings * 60 - roi_input.rpa_implementation_cost
+    extended_metrics = st.session_state.calculator_results["extended_metrics"]
     
     # Results Dashboard
     st.divider()
@@ -373,27 +382,27 @@ if st.session_state.show_results and st.session_state.calculator_results:
     st.subheader("💰 Economia (1, 2 e 5 anos)")
     eco_col1, eco_col2, eco_col3 = st.columns(3)
     with eco_col1:
-        st.metric("1 Ano", format_currency(economia_1year))
+        st.metric("1 Ano", format_currency(extended_metrics["economia_1year"]))
     with eco_col2:
-        st.metric("2 Anos", format_currency(economia_2years))
+        st.metric("2 Anos", format_currency(extended_metrics["economia_2years"]))
     with eco_col3:
-        st.metric("5 Anos", format_currency(economia_5years))
+        st.metric("5 Anos", format_currency(extended_metrics["economia_5years"]))
     
     st.subheader("📈 ROI (1, 2 e 5 anos)")
     roi_col1, roi_col2, roi_col3 = st.columns(3)
     with roi_col1:
-        st.metric("1 Ano", f"{roi_1year:.1f}%")
+        st.metric("1 Ano", f"{extended_metrics['roi_1year_percentage']:.1f}%")
     with roi_col2:
-        st.metric("2 Anos", f"{roi_2years:.1f}%")
+        st.metric("2 Anos", f"{extended_metrics['roi_2years_percentage']:.1f}%")
     with roi_col3:
-        st.metric("5 Anos", f"{roi_5years:.1f}%")
+        st.metric("5 Anos", f"{extended_metrics['roi_5years_percentage']:.1f}%")
     
     st.subheader("⏱️ Payback e Economia Mensal")
     payback_col1, payback_col2, payback_col3 = st.columns(3)
     with payback_col1:
-        st.metric("Payback", f"{result.payback_period_months:.1f}m")
+        st.metric("Payback", f"{extended_metrics['payback_period_months']:.1f}m")
     with payback_col2:
-        st.metric("Economia Mensal", format_currency(total_monthly_savings))
+        st.metric("Economia Mensal", format_currency(extended_metrics['total_monthly_savings']))
     with payback_col3:
         capacity_hours = result.automation_capacity
         st.metric("Capacidade Liberada", f"{capacity_hours:.0f}h/mês")
@@ -521,25 +530,26 @@ if st.session_state.show_results and st.session_state.calculator_results:
     
     with col1:
         if st.button("Salvar Cálculo", width="stretch"):
-            try:
-                fines_avoided = st.session_state.calculator_results.get("fines_avoided", 0)
-                sql_savings = st.session_state.calculator_results.get("sql_savings", 0)
-                total_monthly_savings = result.monthly_savings + fines_avoided + sql_savings
-                
-                calculation_data = {
-                    # Basic Information
-                    "process_name": roi_input.process_name,
-                    "department": st.session_state.calculator_results.get("department", ""),
+            with st.spinner("💾 Salvando cálculo..."):
+                try:
+                    fines_avoided = st.session_state.calculator_results.get("fines_avoided", 0)
+                    sql_savings = st.session_state.calculator_results.get("sql_savings", 0)
+                    total_monthly_savings = result.monthly_savings + fines_avoided + sql_savings
                     
-                    # Process Characteristics
-                    "people_involved": roi_input.people_involved,
-                    "current_time_per_month": roi_input.current_time_per_month,
-                    "hourly_rate": roi_input.hourly_rate,
-                    "complexity": st.session_state.calculator_results.get("complexity", "Média"),
-                    "systems_quantity": st.session_state.calculator_results.get("systems_quantity", 1),
-                    "daily_transactions": st.session_state.calculator_results.get("daily_transactions", 100),
-                    "error_rate": st.session_state.calculator_results.get("error_rate", 0),
-                    "exception_rate": st.session_state.calculator_results.get("exception_rate", 0),
+                    calculation_data = {
+                        # Basic Information
+                        "process_name": roi_input.process_name,
+                        "department": st.session_state.calculator_results.get("department", ""),
+                        
+                        # Process Characteristics
+                        "people_involved": roi_input.people_involved,
+                        "current_time_per_month": roi_input.current_time_per_month,
+                        "hourly_rate": roi_input.hourly_rate,
+                        "complexity": st.session_state.calculator_results.get("complexity", "Média"),
+                        "systems_quantity": st.session_state.calculator_results.get("systems_quantity", 1),
+                        "daily_transactions": st.session_state.calculator_results.get("daily_transactions", 100),
+                        "error_rate": st.session_state.calculator_results.get("error_rate", 0),
+                        "exception_rate": st.session_state.calculator_results.get("exception_rate", 0),
                     
                     # Automation Settings
                     "expected_automation_percentage": roi_input.expected_automation_percentage,
@@ -561,12 +571,25 @@ if st.session_state.show_results and st.session_state.calculator_results:
                     "payback_period_months": roi_input.rpa_implementation_cost / total_monthly_savings if total_monthly_savings > 0 else 0,
                     "roi_first_year": (total_monthly_savings * 12 - roi_input.rpa_implementation_cost),
                     "roi_percentage_first_year": ((total_monthly_savings * 12 - roi_input.rpa_implementation_cost) / roi_input.rpa_implementation_cost * 100),
-                }
-                
-                db_manager.save_calculation(calculation_data)
-                st.success("✅ Cálculo salvo com sucesso! Veja o histórico na aba 'Histórico de Resultados'")
-            except Exception as e:
-                st.error(f"❌ Erro ao salvar: {str(e)}")
+                    }
+                    
+                    success, saved_calc, error_msg = db_manager.save_calculation(calculation_data)
+                    
+                    if success:
+                        st.success("✅ Cálculo salvo com sucesso!")
+                        
+                        # Clear calculator results and cache
+                        st.session_state.show_results = False
+                        st.session_state.calculator_results = None
+                        db_manager.clear_cache()
+                        
+                        import time
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Erro ao salvar: {error_msg}")
+                except Exception as e:
+                    st.error(f"❌ Erro ao salvar: {str(e)}")
     
     with col2:
         if st.button("Novo Cálculo", width="content"):
