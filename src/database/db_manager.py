@@ -148,7 +148,8 @@ class DatabaseManager:
                     return False, None, error_msg
             
             # Invalidate cache when saving
-            self._cache_manager.clear_key("all_calculations")
+            # Invalidate all user-specific caches since we don't know which user this affects
+            self._cache_manager.clear()
             
             return True, calculation, None
         except ValueError as e:
@@ -287,8 +288,8 @@ class DatabaseManager:
                     logger.info(f"Calculation updated: {calc_id} - Classification: {calculation.classification}")
                     
                     # Invalidate cache
-                    self._cache_manager.clear_key("all_calculations")
-                    self._cache_manager.clear_key(f"calculation_{calc_id}")
+                    # Invalidate all caches since we don't know which users are affected
+                    self._cache_manager.clear()
                     
                     return True, calculation, None
                 except Exception as e:
@@ -327,8 +328,8 @@ class DatabaseManager:
                     logger.info(f"Calculation deleted: {calc_id}")
                     
                     # Invalidate cache
-                    self._cache_manager.clear_key("all_calculations")
-                    self._cache_manager.clear_key(f"calculation_{calc_id}")
+                    # Invalidate all caches since we don't know which users are affected
+                    self._cache_manager.clear()
                     
                     return True, None
                 except Exception as e:
