@@ -218,31 +218,107 @@ class TestDatabaseDelete:
         assert result is True
 
 
-class TestDatabaseIntegration:
-    """Integration tests for database operations"""
+class TestUserFiltering:
+    """Test user_id filtering functionality"""
     
-    def test_crud_workflow(self, db, sample_calculation_data):
-        """Test complete CRUD workflow"""
-        # Create
-        saved = db.save_calculation_legacy(sample_calculation_data)
-        assert saved.id is not None
+    def test_save_with_user_id(self, db, sample_calculation_data):
+        """Test saving calculation with specific user_id"""
+        data = {**sample_calculation_data, "user_id": 1}
+        success, calc, error = db.save_calculation(data)
         
-        # Read
-        retrieved = db.get_calculation_legacy(saved.id)
-        assert retrieved.process_name == "Test Process"
+        assert success is True
+        assert calc is not None
+        assert calc.user_id == 1
+        assert error is None
+    
+    def test_get_all_calculations_default_user(self, db, sample_calculation_data):
+        """Test retrieving calculations defaults to user_id=1"""
+        # Clear cache first
+        db._cache_manager.clear()
         
-        # Update
-        updated = db.update_calculation_legacy(saved.id, {"process_name": "Updated"})
-        assert updated.process_name == "Updated"
+        # Save for user 1
+        data1 = {**sample_calculation_data, "user_id": 1, "process_name": "User1_Process_Unique"}
+        success1, calc1, _ = db.save_calculation(data1)
         
-        # Verify update
-        re_retrieved = db.get_calculation_legacy(saved.id)
-        assert re_retrieved.process_name == "Updated"
+        # Get all for user 1 (default)
+        success, calcs, error = db.get_all_calculations(user_id=1, use_cache=False)
         
-        # Delete
-        deleted = db.delete_calculation_legacy(saved.id)
-        assert deleted is True
+        assert success is True
+        assert error is None
+        assert len(calcs) >= 1
         
-        # Verify deletion
-        final = db.get_calculation_legacy(saved.id)
-        assert final is None
+        # Verify all are for user 1
+        for calc in calcs:
+            assert calc.user_id == 1
+    
+    def test_get_all_calculations_by_user_id(self, db, sample_calculation_data):
+        """Test filtering calculations by specific user_id"""
+        # Clear cache first
+        db._cache_manager.clear()
+        
+        # Save for user 1
+        data_user1 = {**sample_calculation_data, "user_id": 1, "process_name": "UniqueUser1"}
+        success1, calc1, _ = db.save_calculation(data_user1)
+        
+        # Save for user 2
+        data_user2 = {**sample_calculation_data, "user_id": 2, "process_name": "UniqueUser2"}
+        success2, calc2, _ = db.save_calculation(data_user2)
+        
+        # Get all for user 1
+        success, calcs_user1, error = db.get_all_calculations(user_id=1, use_cache=False)
+        assert success is True
+        user1_names = [c.process_name for c in calcs_user1]
+        assert "UniqueUser1" in user1_names
+        
+        # Get all for user 2
+        success, calcs_user2, error = db.get_all_calculations(user_id=2, use_cache=False)
+        assert success is True
+        user2_names = [c.process_name for c in calcs_user2]
+        assert "UniqueUser2" in user2_names
+    
+    def test_user_isolation(self, db, sample_calculation_data):
+        """Test that users cannot see each other's calculations"""
+        # Clear cache first
+        db._cache_manager.clear()
+        
+        # Save for user 1
+        data_user1 = {**sample_calculation_data, "user_id": 1, "process_name": "Secret_User_1_Private"}
+        success1, calc1, _ = db.save_calculation(data_user1)
+        
+        # Save for user 2
+        data_user2 = {**sample_calculation_data, "user_id": 2, "process_name": "Secret_User_2_Private"}
+        success2, calc2, _ = db.save_calculation(data_user2)
+        
+        # User 1 should only see their own
+        success, calcs_user1, error = db.get_all_calculations(user_id=1, use_cache=False)
+        user1_names = [c.process_name for c in calcs_user1]
+        assert "Secret_User_1_Private" in user1_names
+        assert "Secret_User_2_Private" not in user1_names
+        
+        # User 2 should only see their own
+        success, calcs_user2, error = db.get_all_calculations(user_id=2, use_cache=False)
+        user2_names = [c.process_name for c in calcs_user2]
+        assert "Secret_User_2_Private" in user2_names
+        assert "Secret_User_1_Private" not in user2_names
+    
+    def test_default_user_id_is_one(self, db, sample_calculation_data):
+        """Test that calculations default to user_id=1 if not specified"""
+        # Save without specifying user_id (should default to 1)
+        success, calc, error = db.save_calculation(sample_calculation_data)
+        
+        assert success is True
+        assert calc.user_id == 1
+    
+    def test_classification_with_user_id(self, db, sample_calculation_data):
+        """Test that classification works with user_id"""
+        data = {
+            **sample_calculation_data,
+            "user_id": 1,
+            "roi_percentage_first_year": 100,
+            "payback_period_months": 6,
+        }
+        success, calc, error = db.save_calculation(data)
+        
+        assert success is True
+        assert calc.classification == "QUICK WIN"
+        assert calc.user_id == 1
