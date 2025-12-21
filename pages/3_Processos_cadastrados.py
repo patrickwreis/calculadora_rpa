@@ -49,6 +49,7 @@ selected_process_id = st.selectbox(
 )
 
 selected_calc = next(c for c in calculations if c.id == selected_process_id)
+selected_id = selected_calc.id
 
 st.divider()
 
@@ -144,15 +145,17 @@ def edit_process_modal():
                 "Pessoas Envolvidas",
                 value=int(selected_calc.people_involved),
                 min_value=1,
-                step=1
+                step=1,
+                help="Quantas pessoas executam o processo (mesmo campo da criação)"
             )
         
         with col2:
             current_time = st.number_input(
-                "Tempo Atual (horas/mês)",
+                "Tempo gasto por mês (horas)",
                 value=float(selected_calc.current_time_per_month),
                 min_value=0.0,
-                step=0.5
+                step=0.5,
+                help="Horas/mês do processo (equivale a dias × horas/dia da criação)"
             )
         
         with col3:
@@ -161,7 +164,8 @@ def edit_process_modal():
                 value=float(selected_calc.hourly_rate),
                 min_value=0.0,
                 step=1.0,
-                format="%.2f"
+                format="%.2f",
+                help="Custo/hora atual (derivado do salário na criação)"
             )
         
         col1, col2, col3 = st.columns(3)
@@ -196,8 +200,8 @@ def edit_process_modal():
                 step=10
             )
         
-        col1, col2 = st.columns(2)
-        
+        col1, col2, col3 = st.columns(3)
+
         with col1:
             error_rate = st.number_input(
                 "Taxa de Erro (%)",
@@ -206,7 +210,7 @@ def edit_process_modal():
                 max_value=100.0,
                 step=1.0
             )
-        
+
         with col2:
             expected_automation_percentage = st.number_input(
                 "% do Processo que SERÁ AUTOMATIZADO",
@@ -216,10 +220,8 @@ def edit_process_modal():
                 step=5.0,
                 help="De 100% do processo, qual porcentagem será possível automatizar?"
             )
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
+
+        with col3:
             exception_rate = st.number_input(
                 "% de Revisão Manual NOS AUTOMATIZADOS",
                 value=float(getattr(selected_calc, 'exception_rate', 0)),
@@ -228,24 +230,6 @@ def edit_process_modal():
                 step=1.0,
                 help=f"Dos {expected_automation_percentage:.0f}% automatizados, qual % ainda precisa de revisão/validação manual?"
             )
-        
-        with col2:
-            # Visual breakdown of automation
-            from src.calculator.utils import calculate_automation_metrics
-            
-            metrics = calculate_automation_metrics(
-                expected_automation_percentage=expected_automation_percentage,
-                exception_rate=exception_rate
-            )
-            
-            st.markdown("**📊 Breakdown da Automação:**")
-            st.info(f"""
-✅ **{metrics['fully_automated_pct']:.1f}%** → Operacional (100% automático)  
-⚠️ **{metrics['partial_review_pct']:.1f}%** → Precisa revisão manual  
-👤 **{metrics['still_manual_pct']:.1f}%** → Continua manual  
-━━━━━━━━━━━━━━━━━  
-📝 **{metrics['total_manual_effort_pct']:.1f}%** → Total que precisa trabalho manual
-            """)
 
         
         # Custos de Implementação
@@ -290,7 +274,10 @@ def edit_process_modal():
                 format="%.2f"
             )
         
-        monthly_cost = (impl_cost * maintenance_percentage) / 100 / 12
+        # Na criação, a manutenção é calculada sobre o custo de desenvolvimento (impl_cost = dev_total_cost + other_costs).
+        # Para manter consistência, removemos other_costs da base antes de aplicar o percentual anual.
+        dev_cost_base = max(impl_cost - other_costs, 0.0)
+        monthly_cost = (dev_cost_base * maintenance_percentage) / 100 / 12
         monthly_rpa_cost = monthly_cost + infra_license_cost
         
         # Benefícios Adicionais
