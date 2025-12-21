@@ -10,6 +10,7 @@ from src.calculator.utils import format_currency, format_percentage, format_mont
 from src.database import DatabaseManager
 from src.ui.components import page_header
 from src.ui import EmptyStateManager
+from src.ui.auth import require_auth
 
 # Page config
 st.set_page_config(
@@ -28,6 +29,10 @@ if "calculator_results" not in st.session_state:
 
 if "show_results" not in st.session_state:
     st.session_state.show_results = False
+
+# Auth gate (disabled if no AUTH_USERNAME/PASSWORD set)
+if not require_auth(form_key="novo_processo_login"):
+    st.stop()
 
 # Initialize components
 calculator = ROICalculator()
@@ -548,6 +553,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
                         # Basic Information
                         "process_name": roi_input.process_name,
                         "department": st.session_state.calculator_results.get("department", ""),
+                        "user_id": st.session_state.get("auth_user_id", 1),
                         
                         # Process Characteristics
                         "people_involved": roi_input.people_involved,

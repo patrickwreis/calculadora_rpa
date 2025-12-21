@@ -76,7 +76,7 @@ class DatabaseManager:
     def _create_tables(self):
         """Create database tables"""
         # Import here to ensure Calculation is registered with SQLModel
-        from src.models import Calculation
+        from src.models import Calculation, User
         from sqlmodel import SQLModel
         
         # Use the correct metadata with all registered models
@@ -114,6 +114,14 @@ class DatabaseManager:
                         connection.commit()
                     except Exception as e:
                         print(f"Column {col_name} might already exist or error: {e}")
+
+        # Ensure users table exists (SQLModel create_all covers new models, but we also guard here)
+        with self.engine.connect() as connection:
+            try:
+                connection.execute(text("SELECT 1 FROM users LIMIT 1"))
+            except Exception:
+                from sqlmodel import SQLModel
+                SQLModel.metadata.create_all(self.engine)
     
     def save_calculation(self, calculation_data: dict) -> Tuple[bool, Optional["Calculation"], Optional[str]]:
         """
@@ -161,9 +169,9 @@ class DatabaseManager:
             logger.error(error_msg)
             return False, None, error_msg
     
-    def get_all_calculations(self, user_id: int = 1, use_cache: bool = True) -> Tuple[bool, List["Calculation"], Optional[str]]:
+    def get_all_calculations(self, user_id: Optional[int] = 1, use_cache: bool = True) -> Tuple[bool, List["Calculation"], Optional[str]]:
         """
-        Get all calculations filtered by user_id
+        Get all calculations filtered by user_id (None = todos)
         
         Args:
             user_id: User ID to filter by (default 1)
@@ -173,7 +181,7 @@ class DatabaseManager:
             Tuple of (success: bool, calculations: list, error_message: str or None)
         """
         try:
-            cache_key = f"all_calculations_user_{user_id}"
+            cache_key = f"all_calculations_user_{user_id if user_id is not None else 'all'}"
             
             # Try cache first
             if use_cache:
@@ -185,7 +193,10 @@ class DatabaseManager:
             from src.models import Calculation
             with Session(self.engine) as session:
                 try:
-                    statement = select(Calculation).where(Calculation.user_id == user_id)
+                    if user_id is None:
+                        statement = select(Calculation)
+                    else:
+                        statement = select(Calculation).where(Calculation.user_id == user_id)
                     calculations = session.exec(statement).all()
                     result = list(calculations)
                     logger.info(f"Retrieved {len(result)} calculations for user {user_id} from database")
@@ -341,6 +352,32 @@ class DatabaseManager:
             error_msg = f"Unexpected error deleting calculation: {str(e)}"
             logger.error(error_msg)
             return False, error_msg
+
+    # ========== USER MANAGEMENT ==========
+    def get_user_by_username(self, username: str) -> Optional["User"]:
+        """Fetch user by username."""
+        from src.models import User
+        with Session(self.engine) as session:
+            statement = select(User).where(User.username == username)
+            return session.exec(statement).first()
+
+    def create_user(self, username: str, password_hash: str, is_admin: bool = False, is_active: bool = True) -> Optional["User"]:
+        """Create a new user if username not taken."""
+        from src.models import User
+        with Session(self.engine) as session:
+            existing = session.exec(select(User).where(User.username == username)).first()
+            if existing:
+                return existing
+            user = User(
+                username=username,
+                password_hash=password_hash,
+                is_admin=is_admin,
+                is_active=is_active,
+            )
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            return user
     
     @staticmethod
     def clear_cache() -> None:

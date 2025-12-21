@@ -11,6 +11,7 @@ from src.calculator.utils import format_currency, format_percentage, format_mont
 from src.database import DatabaseManager
 from src.ui.components import page_header
 from src.ui import EmptyStateManager
+from src.ui.auth import require_auth
 
 # Page config
 st.set_page_config(
@@ -20,6 +21,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Auth gate (disabled if no AUTH_USERNAME/PASSWORD set)
+if not require_auth(form_key="processos_login"):
+    st.stop()
+
 # Initialize database and calculator
 db_manager = DatabaseManager()
 calculator = ROICalculator()
@@ -27,9 +32,14 @@ calculator = ROICalculator()
 # Page header
 page_header("Histórico de Processos", "Visualize, edite e gerencie todos os seus cálculos de ROI")
 
+# Get current user
+current_user_id = st.session_state.get("auth_user_id", 1)
+is_admin = st.session_state.get("auth_is_admin", False)
+user_filter = None if is_admin else current_user_id
+
 # Get calculations with loading indicator
 with st.spinner("⏳ Carregando processos..."):
-    success, calculations, error_msg = db_manager.get_all_calculations(use_cache=True)
+    success, calculations, error_msg = db_manager.get_all_calculations(user_id=user_filter, use_cache=True)
     if not success:
         st.error(f"Erro ao carregar processos: {error_msg}")
         st.stop()

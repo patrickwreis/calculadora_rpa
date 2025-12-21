@@ -5,6 +5,7 @@ Professional tool for analyzing ROI of RPA implementations
 """
 import streamlit as st
 from config import APP_NAME, APP_VERSION, APP_DESCRIPTION
+from src.ui.auth import require_auth
 
 # Page configuration
 st.set_page_config(
@@ -15,6 +16,9 @@ st.set_page_config(
 )
 
 # Main header
+if not require_auth(form_key="app_login_form"):
+    st.stop()
+
 st.title("📈 ROI RPA Analyzer")
 st.markdown("Calcule o retorno real de suas automações RPA")
 
