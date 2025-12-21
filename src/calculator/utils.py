@@ -252,3 +252,44 @@ def validate_input(data: Dict[str, Any]) -> Tuple[bool, str]:
     is_valid, errors = InputValidator.validate_all_inputs(data)
     error_message = errors[0] if errors else ""
     return is_valid, error_message
+
+def calculate_automation_metrics(
+    expected_automation_percentage: float,
+    exception_rate: float
+) -> Dict[str, float]:
+    """
+    Calculate actual automation metrics based on expected automation and exception rate.
+    
+    Args:
+        expected_automation_percentage: % of process that will be automated (0-100)
+        exception_rate: % of automated tasks that need manual review (0-100)
+    
+    Returns:
+        Dict with:
+        - fully_automated_pct: % that runs 100% automatically (no intervention)
+        - partial_review_pct: % that needs manual review despite automation
+        - still_manual_pct: % that wasn't automated and remains manual
+        - total_manual_effort_pct: Total % requiring manual work
+    
+    Example:
+        80% expected automation, 20% exception rate:
+        - fully_automated_pct = 80% × (1 - 20%) = 64%
+        - partial_review_pct = 80% × 20% = 16%
+        - still_manual_pct = 100% - 80% = 20%
+        - total_manual_effort_pct = 16% + 20% = 36%
+    """
+    automation_ratio = expected_automation_percentage / 100.0
+    exception_ratio = exception_rate / 100.0
+    
+    # Calculate each component
+    fully_automated_pct = expected_automation_percentage * (1 - exception_ratio)
+    partial_review_pct = expected_automation_percentage * exception_ratio
+    still_manual_pct = 100.0 - expected_automation_percentage
+    total_manual_effort_pct = partial_review_pct + still_manual_pct
+    
+    return {
+        "fully_automated_pct": fully_automated_pct,
+        "partial_review_pct": partial_review_pct,
+        "still_manual_pct": still_manual_pct,
+        "total_manual_effort_pct": total_manual_effort_pct,
+    }
