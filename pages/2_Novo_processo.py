@@ -47,7 +47,7 @@ st.markdown("Informe os dados atuais do processo que será automatizado para cal
 with st.form("roi_form"):
     
     # Basic Information Section
-    st.markdown("### Informações Básicas")
+    st.markdown("### 📋 Informações Básicas")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -114,7 +114,7 @@ with st.form("roi_form"):
     current_time_per_month = hours_per_day * days_per_month
     
     # Process Characteristics Section
-    st.markdown("### Características do Processo")
+    st.markdown("### 🔧 Características do Processo")
     
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -156,25 +156,55 @@ with st.form("roi_form"):
     with col1:
         error_rate = st.number_input(
             "Taxa de erro atual (%)",
-            min_value=0,
-            max_value=100,
-            value=5,
-            step=1,
+            min_value=0.0,
+            max_value=100.0,
+            value=5.0,
+            step=1.0,
             help="Qual a porcentagem de erros no processo manual?"
         )
     
     with col2:
-        exception_rate = st.number_input(
-            "Taxa de exceção (%)",
-            min_value=0,
-            max_value=100,
-            value=10,
-            step=1,
-            help="Porcentagem que precisa de análise manual (Ex: de 100% transações, 10% precisa de análise)"
+        expected_automation_percentage = st.number_input(
+            "% do Processo que SERÁ AUTOMATIZADO",
+            min_value=0.0,
+            max_value=100.0,
+            value=float(default_automation * 100),
+            step=5.0,
+            help="De 100% do processo, qual porcentagem será possível automatizar?"
         )
     
+    col1, col2 = st.columns(2)
+    with col1:
+        exception_rate = st.number_input(
+            "% de Revisão Manual NOS AUTOMATIZADOS",
+            min_value=0.0,
+            max_value=100.0,
+            value=10.0,
+            step=1.0,
+            help=f"Dos {expected_automation_percentage:.0f}% automatizados, qual % ainda precisa de revisão/validação manual?"
+        )
+    
+    with col2:
+        # Visual breakdown of automation
+        from src.calculator.utils import calculate_automation_metrics
+        
+        metrics = calculate_automation_metrics(
+            expected_automation_percentage=expected_automation_percentage,
+            exception_rate=exception_rate
+        )
+        
+        st.markdown("**📊 Breakdown da Automação:**")
+        st.info(f"""
+✅ **{metrics['fully_automated_pct']:.1f}%** → Operacional (100% automático)  
+⚠️ **{metrics['partial_review_pct']:.1f}%** → Precisa revisão manual  
+👤 **{metrics['still_manual_pct']:.1f}%** → Continua manual  
+━━━━━━━━━━━━━━━━━  
+📝 **{metrics['total_manual_effort_pct']:.1f}%** → Total que precisa trabalho manual
+        """)
+
+    
     # Implementation Section - Development Costs
-    st.markdown("### Custos de Implementação")
+    st.markdown("### 💰 Custos de Implementação")
     
     st.markdown("#### Custos de Desenvolvimento")
     
@@ -248,12 +278,8 @@ with st.form("roi_form"):
     impl_cost = dev_total_cost + other_costs
     total_monthly_cost = monthly_cost + infra_license_cost
     
-    # Calculate automation percentage based on exception rate
-    # If 10% needs manual review, 90% can be automated
-    automation_pct = 100 - exception_rate
-    
     # Additional Benefits Section
-    st.markdown("### Outros Benefícios")
+    st.markdown("### 🎁 Outros Benefícios")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -301,7 +327,7 @@ with st.form("roi_form"):
             'hourly_rate': hourly_rate,
             'rpa_implementation_cost': impl_cost,
             'rpa_monthly_cost': total_monthly_cost,
-            'expected_automation_percentage': automation_pct,
+            'expected_automation_percentage': expected_automation_percentage,
             'error_rate': error_rate,
             'exception_rate': exception_rate,
             'fines_avoided': fines_avoided,
@@ -324,7 +350,8 @@ with st.form("roi_form"):
                 "hourly_rate": hourly_rate,
                 "rpa_implementation_cost": impl_cost,
                 "rpa_monthly_cost": total_monthly_cost,
-                "expected_automation_percentage": automation_pct,
+                "expected_automation_percentage": expected_automation_percentage,
+                "exception_rate": exception_rate,
             }
             
             roi_input = ROIInput(**input_dict)

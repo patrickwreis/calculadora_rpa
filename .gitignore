@@ -194,6 +194,7 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode
 
-# Ignore local SQLite databases
+# Ignore all local SQLite databases
+*.db
 data/calculator.db
 data/*.db

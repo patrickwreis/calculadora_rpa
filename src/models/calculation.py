@@ -6,10 +6,36 @@ from typing import Optional
 from src.database.base import SQLModel
 
 
+def classify_process(roi_percentage: float, payback_months: float) -> str:
+    """
+    Classify process based on ROI and payback period.
+    
+    - QUICK WIN: ROI > 50% AND Payback < 12 months
+    - MÉDIO PRAZO: ROI > 0% AND Payback < 24 months
+    - BAIXA PRIORIDADE: ROI <= 0% OR Payback >= 24 months
+    
+    Args:
+        roi_percentage: ROI percentage (e.g., 120 for 120%)
+        payback_months: Payback period in months
+        
+    Returns:
+        Classification string: "QUICK WIN", "MÉDIO PRAZO", or "BAIXA PRIORIDADE"
+    """
+    if roi_percentage > 50 and payback_months < 12:
+        return "QUICK WIN"
+    elif roi_percentage > 0 and payback_months < 24:
+        return "MÉDIO PRAZO"
+    else:
+        return "BAIXA PRIORIDADE"
+
+
 class Calculation(SQLModel, table=True):
     """Model for storing calculation history"""
     __table_args__ = {"extend_existing": True}
     id: Optional[int] = Field(default=None, primary_key=True)
+    
+    # User ownership (multi-tenant)
+    user_id: int = Field(default=1, index=True)  # Default to 1 for now (will be linked to User model later)
     
     # Basic Information
     process_name: str
@@ -46,9 +72,12 @@ class Calculation(SQLModel, table=True):
     roi_first_year: float
     roi_percentage_first_year: float
     
+    # Process Classification (auto-calculated by classify_process())
+    classification: str = Field(default="BAIXA PRIORIDADE")  # QUICK WIN | MÉDIO PRAZO | BAIXA PRIORIDADE
+    
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
     def __repr__(self):
-        return f"Calculation(id={self.id}, process_name='{self.process_name}', roi={self.roi_percentage_first_year:.2f}%)"
+        return f"Calculation(id={self.id}, user_id={self.user_id}, process_name='{self.process_name}', roi={self.roi_percentage_first_year:.2f}%, classification='{self.classification}')"

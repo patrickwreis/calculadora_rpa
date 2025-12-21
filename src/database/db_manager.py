@@ -102,6 +102,8 @@ class DatabaseManager:
                 "other_costs": "REAL DEFAULT 0.0",
                 "fines_avoided": "REAL DEFAULT 0.0",
                 "sql_savings": "REAL DEFAULT 0.0",
+                "user_id": "INTEGER DEFAULT 1",
+                "classification": "TEXT DEFAULT 'BAIXA PRIORIDADE'",
             }
             
             # Add missing columns
@@ -115,7 +117,7 @@ class DatabaseManager:
     
     def save_calculation(self, calculation_data: dict) -> Tuple[bool, Optional["Calculation"], Optional[str]]:
         """
-        Save a calculation to the database
+        Save a calculation to the database with automatic classification
         
         Args:
             calculation_data: Dictionary with calculation data
@@ -124,14 +126,21 @@ class DatabaseManager:
             Tuple of (success: bool, calculation: Calculation or None, error_message: str or None)
         """
         try:
-            from src.models import Calculation
+            from src.models import Calculation, classify_process
+            
+            # Auto-classify before saving
+            if 'roi_percentage_first_year' in calculation_data and 'payback_period_months' in calculation_data:
+                roi = calculation_data['roi_percentage_first_year']
+                payback = calculation_data['payback_period_months']
+                calculation_data['classification'] = classify_process(roi, payback)
+            
             calculation = Calculation(**calculation_data)
             with Session(self.engine) as session:
                 try:
                     session.add(calculation)
                     session.commit()
                     session.refresh(calculation)
-                    logger.info(f"Calculation saved: {calculation.id} - {calculation.process_name}")
+                    logger.info(f"Calculation saved: {calculation.id} - {calculation.process_name} - Classification: {calculation.classification}")
                 except Exception as e:
                     session.rollback()
                     error_msg = f"Database commit failed: {str(e)}"
@@ -151,33 +160,34 @@ class DatabaseManager:
             logger.error(error_msg)
             return False, None, error_msg
     
-    def get_all_calculations(self, use_cache: bool = True) -> Tuple[bool, List["Calculation"], Optional[str]]:
+    def get_all_calculations(self, user_id: int = 1, use_cache: bool = True) -> Tuple[bool, List["Calculation"], Optional[str]]:
         """
-        Get all calculations
+        Get all calculations filtered by user_id
         
         Args:
+            user_id: User ID to filter by (default 1)
             use_cache: Whether to use cached results (default True)
             
         Returns:
             Tuple of (success: bool, calculations: list, error_message: str or None)
         """
         try:
-            cache_key = "all_calculations"
+            cache_key = f"all_calculations_user_{user_id}"
             
             # Try cache first
             if use_cache:
                 cached = self._cache_manager.get(cache_key)
                 if cached is not None:
-                    logger.debug("Cache hit for all_calculations")
+                    logger.debug(f"Cache hit for all_calculations (user_id={user_id})")
                     return True, cached, None
             
             from src.models import Calculation
             with Session(self.engine) as session:
                 try:
-                    statement = select(Calculation)
+                    statement = select(Calculation).where(Calculation.user_id == user_id)
                     calculations = session.exec(statement).all()
                     result = list(calculations)
-                    logger.info(f"Retrieved {len(result)} calculations from database")
+                    logger.info(f"Retrieved {len(result)} calculations for user {user_id} from database")
                 except Exception as e:
                     error_msg = f"Database query failed: {str(e)}"
                     logger.error(error_msg)
@@ -240,7 +250,7 @@ class DatabaseManager:
     
     def update_calculation(self, calc_id: int, calculation_data: dict) -> Tuple[bool, Optional["Calculation"], Optional[str]]:
         """
-        Update a calculation
+        Update a calculation with automatic re-classification
         
         Args:
             calc_id: The calculation ID to update
@@ -250,7 +260,7 @@ class DatabaseManager:
             Tuple of (success: bool, calculation: Calculation or None, error_message: str or None)
         """
         try:
-            from src.models import Calculation
+            from src.models import Calculation, classify_process
             with Session(self.engine) as session:
                 try:
                     statement = select(Calculation).where(Calculation.id == calc_id)
@@ -264,10 +274,17 @@ class DatabaseManager:
                         if hasattr(calculation, key):
                             setattr(calculation, key, value)
                     
+                    # Re-classify if ROI or payback changed
+                    if 'roi_percentage_first_year' in calculation_data or 'payback_period_months' in calculation_data:
+                        calculation.classification = classify_process(
+                            calculation.roi_percentage_first_year,
+                            calculation.payback_period_months
+                        )
+                    
                     session.add(calculation)
                     session.commit()
                     session.refresh(calculation)
-                    logger.info(f"Calculation updated: {calc_id}")
+                    logger.info(f"Calculation updated: {calc_id} - Classification: {calculation.classification}")
                     
                     # Invalidate cache
                     self._cache_manager.clear_key("all_calculations")
