@@ -77,6 +77,11 @@ selected_process_id = st.selectbox(
 selected_calc = next(c for c in calculations if c.id == selected_process_id)
 selected_id = selected_calc.id
 
+# Validação de segurança
+if selected_id is None:
+    st.error("Erro: ID do processo inválido")
+    st.stop()
+
 st.divider()
 
 # ========== DETAILS SECTION ==========
@@ -124,11 +129,7 @@ with st.expander("📌 Informações Completas", expanded=True):
         st.write(f"• SLA Reduzida: {format_currency(getattr(selected_calc, 'sql_savings', 0))}")
         st.write(f"• Criado: {selected_calc.created_at.strftime('%d/%m/%Y %H:%M')}")
 
-st.divider()
-
 # ========== ACTION BUTTONS ==========
-st.markdown("### ⚙️ Ações")
-
 col1, col2, col3, col4 = st.columns([1, 1, 2, 2])
 
 with col1:
