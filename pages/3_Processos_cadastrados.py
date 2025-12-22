@@ -242,8 +242,9 @@ def edit_process_modal():
             hours_per_day = minutes_per_day / 60
         
         # Recalcular valores derivados
-        working_hours_per_month = days_per_month * 8
-        hourly_rate = monthly_salary / working_hours_per_month
+        # Using CLT standard: 220 hours/month (44h/week × 5 weeks)
+        HOURS_PER_FTE = 220
+        hourly_rate = monthly_salary / HOURS_PER_FTE
         current_time_per_month = hours_per_day * days_per_month * people_involved
         
         # Características do Processo

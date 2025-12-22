@@ -119,8 +119,9 @@ with st.form("roi_form"):
         hours_per_day = minutes_per_day / 60
     
     # Calculate hourly rate from monthly salary
-    working_hours_per_month = days_per_month * 8  # Dinâmico baseado na entrada do usuário
-    hourly_rate = monthly_salary / working_hours_per_month
+    # Using CLT standard: 220 hours/month (44h/week × 5 weeks)
+    HOURS_PER_FTE = 220
+    hourly_rate = monthly_salary / HOURS_PER_FTE
     current_time_per_month = hours_per_day * days_per_month * people_involved
     
     # Process Characteristics Section
