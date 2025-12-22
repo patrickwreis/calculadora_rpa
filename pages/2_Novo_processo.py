@@ -11,6 +11,7 @@ from src.database import DatabaseManager
 from src.ui.components import page_header
 from src.ui import EmptyStateManager
 from src.ui.auth import require_auth
+from src.ui.auth_components import render_logout_button
 
 # Page config
 st.set_page_config(
@@ -20,8 +21,16 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Auth gate - redirect to home if not authenticated
+if "auth_user" not in st.session_state or st.session_state.auth_user is None:
+    st.switch_page("app.py")
 
+# Auth gate
+if not require_auth(form_key="novo_processo_login"):
+    st.stop()
 
+# Header com logout
+render_logout_button("novo_processo")
 
 # Initialize session state
 if "calculator_results" not in st.session_state:
@@ -29,10 +38,6 @@ if "calculator_results" not in st.session_state:
 
 if "show_results" not in st.session_state:
     st.session_state.show_results = False
-
-# Auth gate (disabled if no AUTH_USERNAME/PASSWORD set)
-if not require_auth(form_key="novo_processo_login"):
-    st.stop()
 
 # Initialize components
 calculator = ROICalculator()

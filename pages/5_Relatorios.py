@@ -11,13 +11,30 @@ from src.calculator.utils import format_currency, format_percentage
 from src.database import DatabaseManager
 from src.export import ExportManager
 from src.ui import EmptyStateManager
+from src.ui.auth import require_auth
+from src.ui.auth_components import render_logout_button
+
+# Auth gate - redirect to home if not authenticated
+if "auth_user" not in st.session_state or st.session_state.auth_user is None:
+    st.switch_page("app.py")
+
+# Auth gate
+if not require_auth(form_key="relatorios_login"):
+    st.stop()
+
+# Header com logout
+render_logout_button("relatorios")
 
 
-def load_data():
-    """Load all calculations from database"""
+def load_data(user_id=None):
+    """Load calculations from database
+    
+    Args:
+        user_id: If provided, filter by user_id. None returns all calculations.
+    """
     try:
         db_manager = DatabaseManager()
-        success, calculations, error_msg = db_manager.get_all_calculations()
+        success, calculations, error_msg = db_manager.get_all_calculations(user_id=user_id)
         if success:
             return calculations
         else:
@@ -374,10 +391,19 @@ def main():
     )
     
     st.title("📊 Relatórios")
-    st.markdown("Análise completa dos processos RPA cadastrados")
+    
+    # Get current user for filtering
+    current_user_id = st.session_state.get("auth_user_id", 1)
+    is_admin = st.session_state.get("auth_is_admin", False)
+    user_filter = None if is_admin else current_user_id
+    
+    if is_admin and user_filter is None:
+        st.markdown("Análise completa de **todos os processos RPA** cadastrados (Admin)")
+    else:
+        st.markdown("Análise completa dos **seus processos RPA** cadastrados")
     
     # Load data
-    calculations = load_data()
+    calculations = load_data(user_id=user_filter)
     
     if not calculations:
         st.info("Nenhum processo cadastrado. Acesse 'Novo Processo' para começar.")

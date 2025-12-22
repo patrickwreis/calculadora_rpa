@@ -10,6 +10,8 @@ from src.calculator.utils import format_currency, format_percentage
 from src.database import DatabaseManager
 from src.ui.components import page_header
 from src.ui import EmptyStateManager
+from src.ui.auth import require_auth
+from src.ui.auth_components import render_logout_button
 
 # Page config
 st.set_page_config(
@@ -18,6 +20,16 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+
+# Auth gate - redirect to home if not authenticated
+if "auth_user" not in st.session_state or st.session_state.auth_user is None:
+    st.switch_page("app.py")
+
+if not require_auth(form_key="dashboard_login"):
+    st.stop()
+
+# Header com logout
+render_logout_button("dashboard")
 
 # Custom CSS for better styling
 st.markdown("""
@@ -44,9 +56,16 @@ st.markdown("""
 # Initialize database
 db_manager = DatabaseManager()
 
+# Get current user for filtering
+current_user_id = st.session_state.get("auth_user_id", 1)
+is_admin = st.session_state.get("auth_is_admin", False)
+
+# Admin pode escolher ver todos ou apenas seus processos
+user_filter = None if is_admin else current_user_id
+
 # Get calculations with loading indicator
 with st.spinner("⏳ Carregando dados do dashboard..."):
-    success, calculations, error_msg = db_manager.get_all_calculations(use_cache=True)
+    success, calculations, error_msg = db_manager.get_all_calculations(user_id=user_filter, use_cache=True)
     if not success:
         EmptyStateManager.show_error_message(f"Erro ao carregar dashboard: {error_msg}")
         st.stop()
@@ -57,7 +76,10 @@ if not calculations:
 
 # ========== HEADER ==========
 st.title("📊 Dashboard Executivo")
-st.markdown("Visão geral de todos os seus processos RPA")
+if is_admin and user_filter is None:
+    st.markdown("Visão geral de **todos os processos RPA** (Admin)")
+else:
+    st.markdown("Visão geral dos **seus processos RPA**")
 st.divider()
 
 # ========== KEY METRICS SECTION ==========

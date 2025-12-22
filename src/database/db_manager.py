@@ -7,13 +7,14 @@ from config import DATABASE_URL
 import functools
 import time
 import logging
+import streamlit as st
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from src.models import Calculation
+    from src.models import Calculation, User
 
 
 class DatabaseError(Exception):
@@ -85,11 +86,11 @@ class DatabaseManager:
     def _migrate_tables(self):
         """Add missing columns to existing tables"""
         with self.engine.connect() as connection:
-            # Check which columns exist
+            # Check which columns exist in 'calculation' table
             cursor = connection.execute(text("PRAGMA table_info(calculation)"))
             existing_columns = {row[1] for row in cursor.fetchall()}
             
-            # Define columns to add with defaults
+            # Define columns to add to 'calculation' with defaults
             columns_to_add = {
                 "department": "TEXT DEFAULT ''",
                 "complexity": "TEXT DEFAULT 'Média'",
@@ -106,7 +107,7 @@ class DatabaseManager:
                 "classification": "TEXT DEFAULT 'BAIXA PRIORIDADE'",
             }
             
-            # Add missing columns
+            # Add missing columns to 'calculation'
             for col_name, col_def in columns_to_add.items():
                 if col_name not in existing_columns:
                     try:
@@ -114,6 +115,19 @@ class DatabaseManager:
                         connection.commit()
                     except Exception as e:
                         print(f"Column {col_name} might already exist or error: {e}")
+
+            # Check which columns exist in 'user' table
+            cursor = connection.execute(text("PRAGMA table_info(user)"))
+            user_columns = {row[1] for row in cursor.fetchall()}
+            
+            # Add 'email' column to 'user' if it doesn't exist
+            if "email" not in user_columns:
+                try:
+                    connection.execute(text("ALTER TABLE user ADD COLUMN email TEXT DEFAULT 'unknown@localhost'"))
+                    connection.commit()
+                    print("✅ Email column added to user table")
+                except Exception as e:
+                    print(f"Could not add email column: {e}")
 
         # Ensure users table exists (SQLModel create_all covers new models, but we also guard here)
         with self.engine.connect() as connection:
@@ -361,7 +375,21 @@ class DatabaseManager:
             statement = select(User).where(User.username == username)
             return session.exec(statement).first()
 
-    def create_user(self, username: str, password_hash: str, is_admin: bool = False, is_active: bool = True) -> Optional["User"]:
+    def get_user_by_email(self, email: str) -> Optional["User"]:
+        """Fetch user by email."""
+        from src.models import User
+        with Session(self.engine) as session:
+            statement = select(User).where(User.email == email)
+            return session.exec(statement).first()
+
+    def list_active_users(self) -> List["User"]:
+        """Return all active users."""
+        from src.models import User
+        with Session(self.engine) as session:
+            statement = select(User).where(User.is_active == True)
+            return list(session.exec(statement).all())
+
+    def create_user(self, username: str, password_hash: str, email: str = "", is_admin: bool = False, is_active: bool = True) -> Optional["User"]:
         """Create a new user if username not taken."""
         from src.models import User
         with Session(self.engine) as session:
@@ -370,6 +398,7 @@ class DatabaseManager:
                 return existing
             user = User(
                 username=username,
+                email=email,
                 password_hash=password_hash,
                 is_admin=is_admin,
                 is_active=is_active,
@@ -411,3 +440,23 @@ class DatabaseManager:
         """Legacy wrapper for delete_calculation"""
         success, _ = self.delete_calculation(calc_id)
         return success
+
+    def update_user_password(self, username: str, hashed_password: str) -> bool:
+        """Update user password by username."""
+        from src.models import User
+        with Session(self.engine) as session:
+            statement = select(User).where(User.username == username)
+            user = session.exec(statement).first()
+            if not user:
+                return False
+            user.password_hash = hashed_password
+            session.add(user)
+            session.commit()
+            return True
+
+
+
+@st.cache_resource
+def get_database_manager() -> "DatabaseManager":
+    """Get or create cached DatabaseManager instance (cached per session)."""
+    return DatabaseManager()

@@ -13,6 +13,8 @@ from src.analysis.ranking import (
 )
 from src.calculator.utils import format_currency, format_months, format_percentage
 from src.database import DatabaseManager
+from src.ui.auth import require_auth
+from src.ui.auth_components import render_logout_button
 
 # Page config
 st.set_page_config(
@@ -22,16 +24,35 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Auth gate - redirect to home if not authenticated
+if "auth_user" not in st.session_state or st.session_state.auth_user is None:
+    st.switch_page("app.py")
+
+# Auth gate
+if not require_auth(form_key="rankings_login"):
+    st.stop()
+
+# Header com logout
+render_logout_button("rankings")
+
 # Initialize database
 db_manager = DatabaseManager()
 
+# Get current user for filtering
+current_user_id = st.session_state.get("auth_user_id", 1)
+is_admin = st.session_state.get("auth_is_admin", False)
+user_filter = None if is_admin else current_user_id
+
 # Title and header
 st.title("🏆 Rankings de Processos")
-st.markdown("Veja quais processos têm melhor desempenho em ROI, Payback e Economia")
+if is_admin and user_filter is None:
+    st.markdown("Veja quais processos têm melhor desempenho em ROI, Payback e Economia (**Todos os processos**)")
+else:
+    st.markdown("Veja quais **seus processos** têm melhor desempenho em ROI, Payback e Economia")
 st.divider()
 
 # Get calculations
-success, calculations, error_msg = db_manager.get_all_calculations()
+success, calculations, error_msg = db_manager.get_all_calculations(user_id=user_filter)
 
 if not success or not calculations:
     if error_msg:

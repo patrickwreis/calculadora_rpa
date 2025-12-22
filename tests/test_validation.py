@@ -94,15 +94,27 @@ class TestInputValidator:
         assert is_valid is False
         assert "100%" in error
     
-    def test_validate_cross_fields_automation_exceeds_limit(self):
-        """Test cross-field validation with automation exceeding limit"""
+    def test_validate_cross_fields_automation_and_exception_independent(self):
+        """Test that automation and exception rates are independent concepts"""
+        # 100% automação com 30% exceção é VÁLIDO
+        # Significa: todo o processo é automatizado, mas 30% dos casos automatizados
+        # geram exceção e precisam de validação manual
+        is_valid, error = InputValidator.validate_cross_fields(
+            error_rate=10.0,
+            exception_rate=30.0,
+            expected_automation_percentage=100.0
+        )
+        assert is_valid is True
+        assert error is None
+        
+        # 80% automação com 30% exceção também é VÁLIDO
         is_valid, error = InputValidator.validate_cross_fields(
             error_rate=10.0,
             exception_rate=30.0,
             expected_automation_percentage=80.0
         )
-        assert is_valid is False
-        assert "exceção" in error.lower()
+        assert is_valid is True
+        assert error is None
     
     def test_validate_all_inputs_valid(self):
         """Test complete valid input validation"""
@@ -202,7 +214,7 @@ class TestInputValidator:
         assert any("pessoas envolvidas" in e.lower() for e in errors)
     
     def test_validate_all_inputs_cross_field_violation(self):
-        """Test validation with cross-field violations"""
+        """Test validation when error_rate + exception_rate > 100%"""
         data = {
             'process_name': 'Test',
             'current_time_per_month': 160.0,
@@ -210,14 +222,14 @@ class TestInputValidator:
             'hourly_rate': 50.0,
             'rpa_implementation_cost': 5000.0,
             'rpa_monthly_cost': 200.0,
-            'expected_automation_percentage': 95.0,
-            'error_rate': 10.0,
-            'exception_rate': 20.0,  # automation 95% > max 80% (100 - 20)
+            'expected_automation_percentage': 80.0,
+            'error_rate': 60.0,
+            'exception_rate': 50.0,  # error + exception = 110% > 100%
         }
         
         is_valid, errors = InputValidator.validate_all_inputs(data)
         assert is_valid is False
-        assert any("exceção" in e.lower() for e in errors)
+        assert any("exceção" in e.lower() or "erro" in e.lower() for e in errors)
     
     def test_validate_all_inputs_with_optional_fields(self):
         """Test validation with optional fields"""

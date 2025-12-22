@@ -87,10 +87,11 @@ class InputValidator:
         if total_issues > 100.0:
             return False, f"Taxa de erro ({error_rate}%) + Taxa de exceção ({exception_rate}%) não pode exceder 100%"
         
-        # Automation percentage should be reasonable given exception rate
-        max_automation = 100.0 - exception_rate
-        if expected_automation_percentage > max_automation:
-            return False, f"Automação esperada ({expected_automation_percentage}%) não pode exceder {max_automation:.1f}% (considerando taxa de exceção de {exception_rate}%)"
+        # Automação e exceção são conceitos independentes:
+        # - Automação: % do processo feito por robô
+        # - Exceção: % dos casos automatizados que precisam de revisão manual
+        # Exemplo: 100% automatizado com 10% exceção = todos os 100 registros são processados
+        # pelo robô, mas 10 deles precisam de validação humana após o processamento
         
         return True, None
     
