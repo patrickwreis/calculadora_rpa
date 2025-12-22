@@ -37,7 +37,7 @@ with col1:
     st.title("📈 ROI RPA Analyzer")
 with col2:
     if "auth_user" not in st.session_state or st.session_state.auth_user is None:
-        if st.button("🔐 Entrar", key="header_login_btn", use_container_width=True, type="primary"):
+        if st.button("🔐 Entrar", key="header_login_btn", width='stretch', type="primary"):
             st.session_state.show_auth_modal = True
     else:
         # Mostrar email ao invés de username
@@ -49,7 +49,7 @@ with col2:
         """, unsafe_allow_html=True)
 with col3:
     if "auth_user" in st.session_state and st.session_state.auth_user is not None:
-        if st.button("🚪", key="header_logout_btn", use_container_width=True, type="secondary", help="Sair"):
+        if st.button("🚪", key="header_logout_btn", width='stretch', type="secondary", help="Sair"):
             for key in list(st.session_state.keys()):
                 if isinstance(key, str) and (key.startswith("auth_") or key.startswith("show_")):
                     del st.session_state[key]
@@ -84,7 +84,7 @@ if st.session_state.get("show_auth_modal", False):
             
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
-                if st.button("✅ Entrar", key="modal_login_btn", use_container_width=True, type="primary"):
+                if st.button("✅ Entrar", key="modal_login_btn", width='stretch', type="primary"):
                     # Sanitizar entrada
                     login_email = sanitize_input(login_email)
                     
@@ -111,7 +111,7 @@ if st.session_state.get("show_auth_modal", False):
                                 st.error("❌ Email ou senha incorretos")
             
             with col3:
-                if st.button("❌ Cancelar", key="modal_login_cancel", use_container_width=True):
+                if st.button("❌ Cancelar", key="modal_login_cancel", width='stretch'):
                     st.session_state.show_auth_modal = False
                     st.rerun()
         
@@ -143,7 +143,7 @@ if st.session_state.get("show_auth_modal", False):
             
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
-                if st.button("✅ Cadastrar", key="modal_reg_btn", use_container_width=True, type="primary"):
+                if st.button("✅ Cadastrar", key="modal_reg_btn", width='stretch', type="primary"):
                     # Sanitizar entradas
                     reg_email = sanitize_input(reg_email)
                     
@@ -185,7 +185,7 @@ if st.session_state.get("show_auth_modal", False):
                                     st.error("❌ Erro ao criar conta. Tente novamente.")
             
             with col3:
-                if st.button("❌ Cancelar", key="modal_reg_cancel", use_container_width=True):
+                if st.button("❌ Cancelar", key="modal_reg_cancel", width='stretch'):
                     st.session_state.show_auth_modal = False
                     st.rerun()
         
@@ -203,7 +203,7 @@ if st.session_state.get("show_auth_modal", False):
             
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
-                if st.button("📧 Enviar", key="modal_recovery_btn", use_container_width=True, type="primary"):
+                if st.button("📧 Enviar", key="modal_recovery_btn", width='stretch', type="primary"):
                     recovery_email = sanitize_input(recovery_email)
                     is_valid, error_msg = validate_email(recovery_email)
                     
@@ -236,7 +236,7 @@ if st.session_state.get("show_auth_modal", False):
                             st.info("📧 Se o email estiver cadastrado, você receberá instruções em breve.")
             
             with col3:
-                if st.button("❌ Cancelar", key="modal_recovery_cancel", use_container_width=True):
+                if st.button("❌ Cancelar", key="modal_recovery_cancel", width='stretch'):
                     st.session_state.show_auth_modal = False
                     st.rerun()
     

@@ -121,7 +121,7 @@ with st.form("roi_form"):
     # Calculate hourly rate from monthly salary
     working_hours_per_month = days_per_month * 8  # Dinâmico baseado na entrada do usuário
     hourly_rate = monthly_salary / working_hours_per_month
-    current_time_per_month = hours_per_day * days_per_month
+    current_time_per_month = hours_per_day * days_per_month * people_involved
     
     # Process Characteristics Section
     st.markdown("### 🔧 Características do Processo")
@@ -617,7 +617,7 @@ def show_results_dialog():
                     st.error(f"❌ Erro ao salvar: {str(e)}")
     
     with col2:
-        if st.button("🔄 Novo Cálculo", use_container_width=True):
+        if st.button("🔄 Novo Cálculo", width='stretch'):
             st.session_state.show_results_dialog = False
             st.session_state.calculator_results = None
             st.rerun()

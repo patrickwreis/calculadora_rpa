@@ -189,7 +189,7 @@ class TestROICalculatorMultiplePeople:
         """Test that more people means more savings"""
         input_data_1_person = ROIInput(
             process_name="Test",
-            current_time_per_month=100,
+            current_time_per_month=100,  # total hours for 1 person
             people_involved=1,
             hourly_rate=100,
             rpa_implementation_cost=10000,
@@ -199,7 +199,7 @@ class TestROICalculatorMultiplePeople:
         
         input_data_5_people = ROIInput(
             process_name="Test",
-            current_time_per_month=100,
+            current_time_per_month=500,  # total hours for 5 people (5x more)
             people_involved=5,
             hourly_rate=100,
             rpa_implementation_cost=10000,

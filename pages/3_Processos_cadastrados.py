@@ -68,12 +68,20 @@ if not calculations:
 # ========== SELECTION SECTION ==========
 st.markdown("### 🎯 Selecione um Processo")
 
-selected_process_id = st.selectbox(
-    "Escolha um processo para visualizar e editar:",
-    [calc.id for calc in calculations],
+process_options = [calc.id for calc in calculations]
+default_selection = [process_options[0]] if process_options else []
+
+selected_ids = st.multiselect(
+    "Escolha um processo para visualizar e editar (busca habilitada):",
+    options=process_options,
+    default=default_selection,
+    max_selections=1,
     format_func=lambda x: f"{next(c.process_name for c in calculations if c.id == x)}",
-    key="main_selectbox"
+    key="main_selectbox",
 )
+
+# Garantir que sempre haja um selecionado
+selected_process_id = selected_ids[0] if selected_ids else process_options[0]
 
 selected_calc = next(c for c in calculations if c.id == selected_process_id)
 selected_id_raw = selected_calc.id
@@ -91,7 +99,15 @@ st.divider()
 # ========== DETAILS SECTION ==========
 st.markdown(f"### 📋 Detalhes: {selected_calc.process_name}")
 
-col1, col2, col3, col4 = st.columns(4)
+# Calculate freed hours (automation capacity)
+from src.calculator.utils import calculate_automation_metrics
+metrics = calculate_automation_metrics(
+    expected_automation_percentage=selected_calc.expected_automation_percentage,
+    exception_rate=getattr(selected_calc, 'exception_rate', 0.0)
+)
+freed_hours = selected_calc.current_time_per_month * (metrics["fully_automated_pct"] / 100.0)
+
+col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
     st.metric("ROI 1º Ano", f"{selected_calc.roi_percentage_first_year:.1f}%")
@@ -105,6 +121,9 @@ with col3:
 with col4:
     st.metric("Economia Mensal", format_currency(selected_calc.monthly_savings))
 
+with col5:
+    st.metric("Horas Liberadas", f"{freed_hours:.1f}h/mês", help="Horas realmente economizadas considerando automação e exceções")
+
 # Expandable details
 with st.expander("📌 Informações Completas", expanded=True):
     col1, col2, col3 = st.columns(3)
@@ -113,7 +132,7 @@ with st.expander("📌 Informações Completas", expanded=True):
         st.write("**Informações do Processo**")
         st.write(f"• Horas/Mês: {selected_calc.current_time_per_month}")
         st.write(f"• Pessoas: {selected_calc.people_involved}")
-        st.write(f"• Taxa Horária: {format_currency(selected_calc.hourly_rate)}")
+        st.write(f"• Valor hora: {format_currency(selected_calc.hourly_rate)}")
         st.write(f"• Automação: {selected_calc.expected_automation_percentage:.1f}%")
         st.write(f"• Departamento: {getattr(selected_calc, 'department', 'N/A')}")
     
@@ -194,9 +213,13 @@ def edit_process_modal():
         
         col1, col2 = st.columns(2)
         with col1:
+            # Calculate default monthly salary from hourly rate if not stored
+            stored_salary = float(getattr(selected_calc, 'monthly_salary', 0.0))
+            default_salary = stored_salary if stored_salary >= 1000.0 else (selected_calc.hourly_rate * days_per_month * 8)
+            
             monthly_salary = st.number_input(
                 "Custo médio por funcionário (R$) *",
-                value=float(getattr(selected_calc, 'monthly_salary', selected_calc.hourly_rate * days_per_month * 8)),
+                value=max(float(default_salary), 1000.0),
                 min_value=1000.0,
                 max_value=100000.0,
                 step=100.0,
@@ -204,9 +227,13 @@ def edit_process_modal():
             )
         
         with col2:
+            # Calculate default minutes per day from current_time_per_month if not stored
+            stored_minutes = int(getattr(selected_calc, 'minutes_per_day', 0))
+            default_minutes = stored_minutes if stored_minutes > 0 else int((selected_calc.current_time_per_month / days_per_month) * 60 if days_per_month > 0 else 60)
+            
             minutes_per_day = st.number_input(
                 "Tempo gasto por dia (minutos) *",
-                value=int(getattr(selected_calc, 'minutes_per_day', (selected_calc.current_time_per_month / days_per_month) * 60 if days_per_month > 0 else 60)),
+                value=max(default_minutes, 5),
                 min_value=5,
                 max_value=480,
                 step=5,
@@ -217,7 +244,7 @@ def edit_process_modal():
         # Recalcular valores derivados
         working_hours_per_month = days_per_month * 8
         hourly_rate = monthly_salary / working_hours_per_month
-        current_time_per_month = hours_per_day * days_per_month
+        current_time_per_month = hours_per_day * days_per_month * people_involved
         
         # Características do Processo
         st.markdown("### 🔧 Características do Processo")
@@ -293,9 +320,13 @@ def edit_process_modal():
         
         col1, col2 = st.columns(2)
         with col1:
+            # Get stored dev_hours or calculate from implementation cost
+            stored_dev_hours = float(getattr(selected_calc, 'dev_hours', 0.0))
+            default_dev_hours = stored_dev_hours if stored_dev_hours > 0 else 160.0
+            
             dev_hours = st.number_input(
                 "Horas de desenvolvimento estimada *",
-                value=float(getattr(selected_calc, 'dev_hours', 160.0)),
+                value=max(float(default_dev_hours), 1.0),
                 min_value=1.0,
                 max_value=10000.0,
                 step=1.0,
@@ -321,9 +352,9 @@ def edit_process_modal():
             maintenance_percentage = st.number_input(
                 "Percentual anual de manutenção (% do desenvolvimento)",
                 value=float(getattr(selected_calc, 'maintenance_percentage', 10)),
-                min_value=0,
-                max_value=100,
-                step=1,
+                min_value=0.0,
+                max_value=100.0,
+                step=1.0,
                 help="Percentual ANUAL do custo de desenvolvimento destinado à manutenção. Será convertido para custo mensal automaticamente (ex: 12% anual => 1% ao mês)."
             )
             monthly_cost = (dev_total_cost * maintenance_percentage) / 100 / 12

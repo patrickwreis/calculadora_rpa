@@ -161,7 +161,7 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
         login_username = st.text_input("👤 Usuário", key=f"{form_key}_login_user", placeholder="seu usuário")
         login_password = st.text_input("🔒 Senha", type="password", key=f"{form_key}_login_pass", placeholder="sua senha")
         
-        if st.button("🔓 Fazer Login", use_container_width=True, key=f"{form_key}_login_btn", type="primary"):
+        if st.button("🔓 Fazer Login", width='stretch', key=f"{form_key}_login_btn", type="primary"):
             if not login_username or not login_password:
                 st.error("❌ Usuário e senha são obrigatórios")
             else:
@@ -187,7 +187,7 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
         
         new_password = st.text_input("🔒 Senha", type="password", key=f"{form_key}_new_pass", placeholder="min. 4 caracteres")
         
-        if st.button("✨ Criar Conta", use_container_width=True, key=f"{form_key}_register_btn", type="primary"):
+        if st.button("✨ Criar Conta", width='stretch', key=f"{form_key}_register_btn", type="primary"):
             if not new_username or not new_password or not new_email:
                 st.error("❌ Usuário, email e senha são obrigatórios")
             elif len(new_username) < 3:
@@ -214,7 +214,7 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
         recovery_user = st.text_input("👤 Digite seu usuário", key=f"{form_key}_recovery_user", placeholder="seu usuário aqui")
         recovery_email = st.text_input("📧 Digite seu email", key=f"{form_key}_recovery_email", placeholder="seu@email.com")
         
-        if st.button("🔐 Recuperar Senha", use_container_width=True, key=f"{form_key}_recovery_btn", type="primary"):
+        if st.button("🔐 Recuperar Senha", width='stretch', key=f"{form_key}_recovery_btn", type="primary"):
             if not recovery_user or not recovery_email:
                 st.error("❌ Usuário e email são obrigatórios")
             else:

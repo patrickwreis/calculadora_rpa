@@ -68,7 +68,7 @@ metrics = MetricsCalculator.aggregate_metrics(calculations)
 # Calcula FTE (Full Time Equivalent) - considera 220h/mês como padrão (44h semanais CLT Brasil)
 HOURS_PER_FTE = 220
 total_fte = sum(
-    (c.current_time_per_month * c.people_involved * c.expected_automation_percentage / 100) / HOURS_PER_FTE
+    (c.current_time_per_month * c.expected_automation_percentage / 100) / HOURS_PER_FTE
     for c in calculations
 )
 
@@ -128,7 +128,7 @@ best_savings_calc = max(calculations, key=lambda c: c.annual_savings)
 
 # Calcula FTE por processo e encontra o maior
 calc_with_fte = [
-    (c, (c.current_time_per_month * c.people_involved * c.expected_automation_percentage / 100) / HOURS_PER_FTE)
+    (c, (c.current_time_per_month * c.expected_automation_percentage / 100) / HOURS_PER_FTE)
     for c in calculations
 ]
 best_fte_calc, best_fte_value = max(calc_with_fte, key=lambda x: x[1])
@@ -199,7 +199,7 @@ with tab1:
         fig_automation = ChartFactory.pie_distribution(
             automation_data, title=""
         )
-        st.plotly_chart(fig_automation, use_container_width=True)
+        st.plotly_chart(fig_automation, width='stretch')
     
     with col2:
         st.markdown("#### ⏱️ Distribuição de Payback")
@@ -207,7 +207,7 @@ with tab1:
         fig_payback = ChartFactory.pie_distribution(
             payback_dist, title=""
         )
-        st.plotly_chart(fig_payback, use_container_width=True)
+        st.plotly_chart(fig_payback, width='stretch')
     
     st.markdown("#### 🏆 Top 5 Processos por ROI")
     top_5 = MetricsCalculator.top_by_metric(calculations, metric="roi", top=5)
@@ -216,11 +216,11 @@ with tab1:
         columns=["process", "automation", "investment", "annual_savings", "roi", "payback"],
         include_rank=True
     )
-    st.dataframe(df_top5, use_container_width=True, hide_index=True)
+    st.dataframe(df_top5, width='stretch', hide_index=True)
 
 # ====== TAB 2: RANKING & COMPARATIVO ======
 with tab2:
-    st.markdown("#### 🏆 Ranking e Comparativo (tabela única)")
+    st.markdown("#### 🏆 Ranking e Comparativo")
 
     col_a, col_b, col_c = st.columns([2, 1, 2])
 
@@ -289,7 +289,7 @@ with tab2:
 
         st.dataframe(
             df_rank,
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
             column_config={
                 "#": st.column_config.NumberColumn(label="#", width="small"),
@@ -351,7 +351,7 @@ if filtered_calculations:
     st.dataframe(
         df_all,
         hide_index=True,
-        use_container_width=True,
+        width='stretch',
         column_config={
             "Processo": st.column_config.TextColumn(width="large"),
             "Departamento": st.column_config.TextColumn(width="medium"),

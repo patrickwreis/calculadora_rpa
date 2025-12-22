@@ -7,7 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.calculator.utils import format_currency, format_percentage
+from src.calculator.utils import format_currency, format_percentage, calculate_automation_metrics
 from src.database import DatabaseManager
 from src.export import ExportManager
 from src.ui import EmptyStateManager
@@ -24,6 +24,17 @@ if not require_auth(form_key="relatorios_login"):
 
 # Header com logout
 render_logout_button("relatorios")
+
+
+def compute_efficiency(calc):
+    """Return freed hours/month and freed FTE based on automation and exceptions."""
+    metrics = calculate_automation_metrics(
+        expected_automation_percentage=calc.expected_automation_percentage,
+        exception_rate=getattr(calc, "exception_rate", 0.0),
+    )
+    freed_hours = (calc.current_time_per_month or 0.0) * (metrics["fully_automated_pct"] / 100.0)
+    freed_fte = freed_hours / 220 if freed_hours else 0.0
+    return freed_hours, freed_fte
 
 
 def load_data(user_id=None):
@@ -54,8 +65,10 @@ def create_export_section(calculations):
     st.subheader("📥 Exportar Relatórios")
     
     # Convert calculations to dictionaries for export
-    calc_dicts = [
-        {
+    calc_dicts = []
+    for calc in calculations:
+        freed_hours, freed_fte = compute_efficiency(calc)
+        calc_dicts.append({
             'process_name': calc.process_name,
             'department': calc.department or '—',
             'complexity': calc.complexity or '—',
@@ -64,6 +77,8 @@ def create_export_section(calculations):
             'daily_transactions': calc.daily_transactions or 0,
             'hourly_rate': calc.hourly_rate or 0.0,
             'current_time_per_month': calc.current_time_per_month or 0.0,
+            'freed_hours_per_month': freed_hours,
+            'freed_fte': freed_fte,
             'rpa_implementation_cost': calc.rpa_implementation_cost or 0.0,
             'rpa_monthly_cost': calc.rpa_monthly_cost or 0.0,
             'maintenance_percentage': calc.maintenance_percentage or 0.0,
@@ -74,9 +89,7 @@ def create_export_section(calculations):
             'roi_first_year': calc.roi_first_year or 0.0,
             'roi_percentage_first_year': calc.roi_percentage_first_year or 0.0,
             'payback_period_months': calc.payback_period_months or 0.0,
-        }
-        for calc in calculations
-    ]
+        })
     
     col1, col2, col3 = st.columns(3)
     
@@ -121,6 +134,8 @@ def create_export_section(calculations):
                 "ROI Ano 1": calc.roi_percentage_first_year,
                 "Payback (meses)": calc.payback_period_months,
                 "Economia Anual": calc.annual_savings,
+                "Horas Liberadas/mês": compute_efficiency(calc)[0],
+                "FTE Liberado": compute_efficiency(calc)[1],
             }
             for calc in calculations
         ])
@@ -188,7 +203,19 @@ def create_summary_report(calculations):
         )
     
     st.subheader("Detalhes dos Processos")
-    st.dataframe(df, width='stretch', hide_index=True)
+    st.dataframe(
+        df,
+        width='stretch',
+        hide_index=True,
+        column_config={
+            "Processo": st.column_config.TextColumn(width="large"),
+            "Departamento": st.column_config.TextColumn(width="medium"),
+            "ROI Ano 1": st.column_config.NumberColumn(format="%.1f%%", width="small"),
+            "Payback (meses)": st.column_config.NumberColumn(format="%.1f", width="small"),
+            "Economia Anual": st.column_config.NumberColumn(format="R$ %.2f", width="medium"),
+            "Data Criação": st.column_config.TextColumn(width="medium"),
+        }
+    )
 
 
 def create_department_report(calculations):
@@ -216,7 +243,18 @@ def create_department_report(calculations):
     df = pd.DataFrame(dept_data)
     df = df.sort_values("Economia Anual", ascending=False)
     
-    st.dataframe(df, width='stretch', hide_index=True)
+    st.dataframe(
+        df,
+        width='stretch',
+        hide_index=True,
+        column_config={
+            "Departamento": st.column_config.TextColumn(width="large"),
+            "Qtd. Processos": st.column_config.NumberColumn(width="small"),
+            "ROI Médio (%)": st.column_config.NumberColumn(format="%.1f%%", width="medium"),
+            "Economia Anual": st.column_config.NumberColumn(format="R$ %.2f", width="medium"),
+            "Payback Médio": st.column_config.NumberColumn(format="%.1f", width="small"),
+        }
+    )
     
     # Charts
     col1, col2 = st.columns(2)
@@ -266,7 +304,20 @@ def create_financial_report(calculations):
     df = pd.DataFrame(financial_data)
     df = df.sort_values("Economia Anual", ascending=False)
     
-    st.dataframe(df, width='stretch', hide_index=True)
+    st.dataframe(
+        df,
+        width='stretch',
+        hide_index=True,
+        column_config={
+            "Processo": st.column_config.TextColumn(width="large"),
+            "Investimento Inicial": st.column_config.NumberColumn(format="R$ %.2f", width="medium"),
+            "Custo Mensal": st.column_config.NumberColumn(format="R$ %.2f", width="small"),
+            "Economia Mensal": st.column_config.NumberColumn(format="R$ %.2f", width="medium"),
+            "Margem (Mês)": st.column_config.NumberColumn(format="R$ %.2f", width="medium"),
+            "Economia Anual": st.column_config.NumberColumn(format="R$ %.2f", width="medium"),
+            "Payback (meses)": st.column_config.NumberColumn(format="%.1f", width="small"),
+        }
+    )
     
     # Financial summary
     col1, col2, col3 = st.columns(3)
@@ -337,7 +388,16 @@ def create_timeline_report(calculations):
         })
     
     df = pd.DataFrame(timeline_data)
-    st.dataframe(df, width='stretch', hide_index=True)
+    st.dataframe(
+        df,
+        width='stretch',
+        hide_index=True,
+        column_config={
+            "Processo": st.column_config.TextColumn(width="large"),
+            "Payback (meses)": st.column_config.NumberColumn(format="%.1f", width="medium"),
+            "Status": st.column_config.TextColumn(width="medium"),
+        }
+    )
     
     # Statistics
     col1, col2, col3 = st.columns(3)

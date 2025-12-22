@@ -25,7 +25,7 @@ def render_logout_button(page_key: str) -> None:
             """, unsafe_allow_html=True)
         
         with col3:
-            if st.button("🚪 Sair", key=f"{page_key}_logout", use_container_width=True, type="secondary"):
+            if st.button("🚪 Sair", key=f"{page_key}_logout", width='stretch', type="secondary"):
                 # Limpar toda sessão de autenticação
                 for key in list(st.session_state.keys()):
                     if key.startswith("auth_"):

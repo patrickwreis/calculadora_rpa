@@ -53,11 +53,8 @@ class ROICalculator:
             ROIResult object with calculated metrics
         """
         # Current monthly cost
-        current_monthly_cost = (
-            input_data.current_time_per_month * 
-            input_data.people_involved * 
-            input_data.hourly_rate
-        )
+        # Note: current_time_per_month already includes all people (total team hours)
+        current_monthly_cost = input_data.current_time_per_month * input_data.hourly_rate
         
         # Calculate actual automation metrics
         from src.calculator.utils import calculate_automation_metrics
@@ -71,9 +68,11 @@ class ROICalculator:
         manual_effort_ratio = metrics["total_manual_effort_pct"] / 100.0
         automated_cost = current_monthly_cost * manual_effort_ratio
         
-        # Monthly savings
-        monthly_savings = current_monthly_cost - automated_cost
-        monthly_savings -= input_data.rpa_monthly_cost  # Subtract RPA cost
+        # Monthly savings (gross - before RPA costs)
+        gross_monthly_savings = current_monthly_cost - automated_cost
+        
+        # Net monthly savings (after RPA costs)
+        monthly_savings = gross_monthly_savings - input_data.rpa_monthly_cost
         
         # Annual metrics
         annual_savings = monthly_savings * 12
@@ -89,10 +88,7 @@ class ROICalculator:
         roi_percentage = (roi_first_year / input_data.rpa_implementation_cost) * 100 if input_data.rpa_implementation_cost > 0 else 0
         
         # Automation capacity (hours per month freed up - ONLY fully automated portion)
-        # Total hours per month = current_time_per_month * people_involved
-        # Hours truly freed = total_hours * fully_automated_pct / 100
-        total_hours_per_month = input_data.current_time_per_month * input_data.people_involved
-        automation_capacity = total_hours_per_month * (metrics["fully_automated_pct"] / 100.0)
+        automation_capacity = input_data.current_time_per_month * (metrics["fully_automated_pct"] / 100.0)
         
         return ROIResult(
             monthly_savings=monthly_savings,

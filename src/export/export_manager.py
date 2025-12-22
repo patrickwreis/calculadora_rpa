@@ -140,7 +140,7 @@ class ExportManager:
                 
                 financial_info = [
                     ['Métrica', 'Valor'],
-                    ['Taxa Horária', ExportManager.CURRENCY_FORMAT.format(hourly_rate)],
+                    ['Valor hora', ExportManager.CURRENCY_FORMAT.format(hourly_rate)],
                     ['Tempo Atual (horas/mês)', f"{current_time:.1f}"],
                     ['Custo Atual (mensal)', ExportManager.CURRENCY_FORMAT.format(current_cost)],
                     ['Custo Implementação RPA', ExportManager.CURRENCY_FORMAT.format(calc.get('rpa_implementation_cost', 0))],
@@ -347,7 +347,7 @@ class ExportManager:
                 row += 1
                 
                 financial_fields = [
-                    ('Taxa Horária (R$)', calc.get('hourly_rate', 0)),
+                    ('Valor hora (R$)', calc.get('hourly_rate', 0)),
                     ('Tempo Atual (horas/mês)', calc.get('current_time_per_month', 0)),
                     ('Custo Implementação (R$)', calc.get('rpa_implementation_cost', 0)),
                     ('Custo Mensal RPA (R$)', calc.get('rpa_monthly_cost', 0)),

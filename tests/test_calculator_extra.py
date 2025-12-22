@@ -13,7 +13,7 @@ def test_automation_capacity_hours(calculator):
     """Automation capacity should be hours freed per month"""
     input_data = ROIInput(
         process_name="Capacity Test",
-        current_time_per_month=176,  # hours per person per month
+        current_time_per_month=880,  # total hours for all 5 people (176h * 5)
         people_involved=5,
         hourly_rate=23.86,
         rpa_implementation_cost=10000,
@@ -21,7 +21,7 @@ def test_automation_capacity_hours(calculator):
         expected_automation_percentage=100,
     )
     result = calculator.calculate(input_data)
-    # total hours = 176 * 5 = 880; with 100% automation -> 880 hours freed
+    # total hours = 880; with 100% automation -> 880 hours freed
     assert abs(result.automation_capacity - 880) < 1e-6
 
 
