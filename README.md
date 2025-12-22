@@ -42,7 +42,7 @@ pip install -r requirements.txt
 
 4. Execute a aplicação
 ```bash
-streamlit run app.py
+streamlit run streamlit_app.py
 ```
 
 A aplicação estará disponível em `http://localhost:8501`
@@ -61,7 +61,7 @@ O script salva um cálculo de teste e imprime os últimos registros.
 
 ```
 calculadora_rpa/
-├── app.py                          # Entry point principal
+├── streamlit_app.py                # Entry point principal
 ├── config/
 │   ├── __init__.py
 │   └── settings.py                # Configurações da aplicação

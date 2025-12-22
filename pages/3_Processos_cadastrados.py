@@ -25,7 +25,7 @@ st.set_page_config(
 
 # Auth gate - redirect to home if not authenticated
 if "auth_user" not in st.session_state or st.session_state.auth_user is None:
-    st.switch_page("app.py")
+    st.switch_page("streamlit_app.py")
 
 # Auth gate (disabled if no AUTH_USERNAME/PASSWORD set)
 if not require_auth(form_key="processos_login"):

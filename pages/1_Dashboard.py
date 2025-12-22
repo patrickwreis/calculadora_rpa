@@ -25,7 +25,7 @@ st.set_page_config(
 
 # Auth gate
 if "auth_user" not in st.session_state or st.session_state.auth_user is None:
-    st.switch_page("app.py")
+    st.switch_page("streamlit_app.py")
 
 if not require_auth(form_key="dashboard_login"):
     st.stop()

@@ -16,7 +16,7 @@ from src.ui.auth_components import render_logout_button
 
 # Auth gate - redirect to home if not authenticated
 if "auth_user" not in st.session_state or st.session_state.auth_user is None:
-    st.switch_page("app.py")
+    st.switch_page("streamlit_app.py")
 
 # Auth gate
 if not require_auth(form_key="relatorios_login"):

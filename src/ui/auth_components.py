@@ -31,7 +31,7 @@ def render_logout_button(page_key: str) -> None:
                     if key.startswith("auth_"):
                         del st.session_state[key]
                 st.success("👋 Logout realizado com sucesso!")
-                st.switch_page("app.py")
+                st.switch_page("streamlit_app.py")
 
 
 def validate_email(email: str) -> tuple[bool, Optional[str]]:
