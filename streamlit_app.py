@@ -22,7 +22,7 @@ st.set_page_config(
 )
 
 # Restaurar sessão NO INÍCIO (antes de qualquer renderização)
-# Verifica token em query_params e valida no banco de dados
+# Verifica token no banco de dados
 SessionManager.restore_session()
 
 # Hide page navigation if not logged in

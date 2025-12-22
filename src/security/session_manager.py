@@ -8,6 +8,7 @@ import streamlit as st
 from src.database import get_database_manager
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 class SessionManager:
@@ -22,21 +23,10 @@ class SessionManager:
     
     @staticmethod
     def save_session(user_id: Optional[int], username: str, email: str, is_admin: bool) -> str:
-        """Salva dados de sessão gerando um token no banco de dados.
-        
-        Args:
-            user_id: ID do usuário (não pode ser None)
-            username: Nome de usuário
-            email: Email do usuário
-            is_admin: Se é admin
-            
-        Returns:
-            Token de sessão para armazenar em cookie/URL
-        """
+        """Salva dados de sessão gerando um token no banco de dados."""
         if user_id is None:
             raise ValueError("user_id não pode ser None")
         
-        # Gera token aleatório
         token = secrets.token_urlsafe(SessionManager.TOKEN_LENGTH)
         expiry = datetime.utcnow() + timedelta(hours=SessionManager.SESSION_EXPIRY_HOURS)
         
@@ -44,118 +34,133 @@ class SessionManager:
         db = get_database_manager()
         db.update_session_token(user_id, token, expiry)
         
-        # Salva em session_state para uso imediato
+        # Salva em session_state
         st.session_state.auth_user = username
         st.session_state.auth_user_id = user_id
         st.session_state.auth_user_email = email
         st.session_state.auth_is_admin = is_admin
         st.session_state.auth_session_token = token
         st.session_state.auth_session_time = datetime.now().isoformat()
+        st.session_state.persistent_session_token = token
+
+        # Persiste também nos query params para sobreviver a F5
+        try:
+            qp = dict(st.query_params)
+            qp["session_token"] = token
+            st.query_params = qp
+        except Exception as e:
+            logger.warning(f"Failed to set query params: {e}")
         
-        # Salva token TANTO em query_params (para F5) QUANTO em session_state (para navegação)
-        st.query_params["session_token"] = token
-        st.session_state.persistent_session_token = token  # Backup para navegação entre páginas
-        
-        logger.info(f"Sessão salva para: {username} (token: {token[:20]}...)")
+        msg = f"SESSION SAVED: user={username} (id={user_id}), token={token[:20]}..., expiry={expiry}"
+        logger.info(msg)
         
         return token
     
     @staticmethod
     def restore_session() -> bool:
-        """Restaura sessão verificando token no banco de dados.
+        """Restaura sessão do token armazenado no banco de dados."""
+        logger.debug("=" * 80)
+        logger.debug("RESTORE_SESSION called")
+        logger.debug(f"  session_state has persistent_session_token: {'persistent_session_token' in st.session_state}")
+        logger.debug(f"  session_state has auth_user: {'auth_user' in st.session_state}")
+        qp = dict(st.query_params)
+        logger.debug(f"  query_params keys: {list(qp.keys())}")
         
-        Tenta duas fontes:
-        1. query_params["session_token"] - para F5 (refresh)
-        2. session_state.persistent_session_token - para navegação entre páginas
-        
-        Returns:
-            True se sessão foi restaurada com sucesso
-        """
-        # Tenta primeiro query_params (F5 refresh)
         token = None
         
-        if "session_token" in st.query_params:
-            token = st.query_params["session_token"]
+        if "persistent_session_token" in st.session_state:
+            token = st.session_state.persistent_session_token
+            if token:
+                logger.debug(f"  Found token in session_state: {token[:20]}...")
+            else:
+                logger.debug("  Token in session_state is empty")
+        
+        # Tenta query params (sobrevive a F5 se a URL mantiver o token)
+        elif "session_token" in qp:
+            token = qp.get("session_token")
             if isinstance(token, list):
                 token = token[0]
-            logger.debug(f"Token de query_params: {token[:20] if token else 'None'}...")
-        
-        # Se não achou em query_params, tenta session_state (navegação entre páginas)
-        if not token and "persistent_session_token" in st.session_state:
-            token = st.session_state.persistent_session_token
-            logger.debug(f"Token de session_state: {token[:20] if token else 'None'}...")
-            # Restaura token em query_params também
             if token:
-                st.query_params["session_token"] = token
+                logger.debug(f"  Found token in query_params: {token[:20]}...")
+            else:
+                logger.debug("  Token in query_params is empty")
         
         if not token:
-            logger.debug("Nenhum token encontrado")
+            logger.debug("  No token found - returning False")
+            logger.debug("=" * 80)
             return False
         
         try:
-            # Verifica token no banco de dados
             db = get_database_manager()
             user = db.get_user_by_session_token(token)
             
             if not user:
-                logger.warning(f"Usuário não encontrado para token: {token[:20]}...")
+                logger.warning(f"  User not found for token: {token[:20]}...")
+                logger.debug("=" * 80)
                 return False
             
             if not user.is_active:
-                logger.warning(f"Usuário não está ativo: {user.username}")
+                logger.warning(f"  User not active: {user.username}")
+                logger.debug("=" * 80)
                 return False
             
-            logger.debug(f"Usuário encontrado: {user.username}")
+            logger.debug(f"  User found: {user.username} (id={user.id})")
             
-            # Verifica expiração
             if user.session_token_expiry and datetime.utcnow() > user.session_token_expiry:
-                # Token expirou, limpa
-                logger.info(f"Token expirado para usuário: {user.username}")
+                logger.warning(f"  Token expired for user: {user.username}")
                 db.update_session_token(user.id, None, None)
                 SessionManager.clear_session()
+                logger.debug("=" * 80)
                 return False
             
-            # Restaura sessão
-            logger.info(f"Restaurando sessão para: {user.username}")
+            logger.info(f"RESTORING SESSION for user: {user.username} (id={user.id})")
             st.session_state.auth_user = user.username
             st.session_state.auth_user_id = user.id
             st.session_state.auth_user_email = user.email
             st.session_state.auth_is_admin = user.is_admin
             st.session_state.auth_session_token = token
             st.session_state.auth_session_time = datetime.now().isoformat()
-            st.session_state.persistent_session_token = token  # Backup para navegação
+            st.session_state.persistent_session_token = token
             
+            logger.info(f"SESSION RESTORED successfully for: {user.username}")
+            logger.debug("=" * 80)
+            logger.debug("=" * 80)
             return True
             
         except Exception as e:
-            logger.error(f"Erro ao restaurar sessão: {str(e)}", exc_info=True)
+            logger.error(f"ERROR restoring session: {str(e)}", exc_info=True)
+            logger.debug("=" * 80)
             return False
     
     @staticmethod
     def clear_session() -> None:
-        """Limpa toda a sessão de autenticação (banco, query_params, session_state)."""
-        # Remove token do banco de dados
+        """Limpa toda a sessão de autenticação (banco e session_state)."""
+        logger.info("CLEARING SESSION")
+        
         if "auth_user_id" in st.session_state:
             try:
                 db = get_database_manager()
                 user_id = st.session_state.auth_user_id
                 if user_id:
                     db.update_session_token(user_id, None, None)
-                    logger.info(f"Token removido do banco para user_id: {user_id}")
+                    logger.debug(f"  Token removed from database for user_id: {user_id}")
             except Exception as e:
-                logger.error(f"Erro ao remover token do banco: {str(e)}")
+                logger.error(f"  Error removing token from database: {str(e)}")
         
-        # Remove de session_state (inclusive backup)
         keys_to_delete = [key for key in st.session_state.keys() 
                          if isinstance(key, str) and (key.startswith("auth_") or key == "persistent_session_token")]
         for key in keys_to_delete:
             del st.session_state[key]
-        
-        # Remove de query_params
-        if "session_token" in st.query_params:
-            del st.query_params["session_token"]
-        
-        logger.info("Sessão completamente limpa")
+        logger.debug(f"  Cleared {len(keys_to_delete)} keys from session_state")
+
+        logger.info("SESSION COMPLETELY CLEARED")
+
+        # Limpa query params para evitar token órfão na URL
+        try:
+            st.query_params = {}
+        except Exception as e:
+            logger.warning(f"Failed to clear query params: {e}")
+
     
     @staticmethod
     def get_session_data() -> Optional[Dict[str, Any]]:
@@ -175,25 +180,19 @@ class SessionManager:
     
     @staticmethod
     def ensure_auth(redirect_page: str = "streamlit_app.py") -> bool:
-        """Garante que a sessão está autenticada, redirecionando se necessário.
+        """Garante que a sessão está autenticada, redirecionando se necessário."""
+        logger.debug(f"ENSURE_AUTH called from page (will redirect to: {redirect_page})")
         
-        Esta função DEVE ser chamada no início de cada página que requer autenticação,
-        ANTES de qualquer outra lógica.
-        
-        Args:
-            redirect_page: Página para redirecionar se não autenticado
-            
-        Returns:
-            True se autenticado, False se redirecionou
-        """
-        # Primeira tentativa: checar session_state
         if "auth_user" in st.session_state and st.session_state.auth_user:
+            logger.debug(f"  Already authenticated as: {st.session_state.auth_user}")
             return True
         
-        # Segunda tentativa: restaurar da sessão persistente
+        logger.debug(f"  Not in session_state, attempting restore_session()...")
+        
         if SessionManager.restore_session():
+            logger.debug(f"  Successfully restored session!")
             return True
         
-        # Sem autenticação, redirecionar
+        logger.warning(f"  Failed to restore session, redirecting to {redirect_page}")
         st.switch_page(redirect_page)
         return False
