@@ -2,7 +2,7 @@
 from typing import List, Optional
 import pandas as pd
 from src.models import Calculation
-from src.ui.components import format_currency, format_months
+from src.calculator.utils import format_currency, format_months
 
 
 class DataFrameBuilder:
@@ -37,7 +37,6 @@ class DataFrameBuilder:
             "annual_savings": "Economia/Ano",
             "roi": "ROI (%)",
             "payback": "Payback (meses)",
-            "automation_capacity": "Capacidade (h/mês)",
         }
 
         if columns is None:
@@ -55,7 +54,6 @@ class DataFrameBuilder:
                 "annual_savings": format_currency(calc.annual_savings),
                 "roi": f"{calc.roi_percentage_first_year:.1f}%",
                 "payback": format_months(calc.payback_period_months),
-                "automation_capacity": f"{calc.automation_capacity:.0f}h",
             }
 
             # Filter to requested columns
@@ -104,6 +102,5 @@ class DataFrameBuilder:
         return DataFrameBuilder.build_calculations_table(
             calculations,
             columns=["process", "department", "automation", "investment", 
-                    "monthly_savings", "annual_savings", "roi", "payback", 
-                    "automation_capacity"]
+                    "monthly_savings", "annual_savings", "roi", "payback"]
         )

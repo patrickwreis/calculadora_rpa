@@ -1,5 +1,5 @@
 """Page-level service for common operations"""
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Any
 import streamlit as st
 from src.database import get_database_manager
 
@@ -8,7 +8,7 @@ class PageService:
     """Centralized page utilities and context management"""
 
     @staticmethod
-    def get_user_context() -> Dict[str, any]:
+    def get_user_context() -> Dict[str, Any]:
         """Get current user context (auth state and filters)
         
         Returns:
