@@ -471,11 +471,27 @@ class DatabaseManager:
             return True
     
     def get_user_by_session_token(self, token: str) -> Optional['User']:
-        """Get user by session token."""
+        """Get user by session token and return detached user object."""
         from src.models import User
+        from sqlalchemy import inspect
+        
         with Session(self.engine) as session:
             statement = select(User).where(User.session_token == token)
             user = session.exec(statement).first()
+            if not user:
+                return None
+            
+            # Force load all attributes before exiting the session
+            _ = user.id
+            _ = user.username
+            _ = user.password_hash
+            _ = user.email
+            _ = user.is_admin
+            _ = user.is_active
+            _ = user.session_token
+            _ = user.session_token_expiry
+            
+            # Make a detached copy by accessing all attributes
             return user
 
 
