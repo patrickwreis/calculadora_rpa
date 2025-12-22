@@ -77,10 +77,13 @@ selected_process_id = st.selectbox(
 selected_calc = next(c for c in calculations if c.id == selected_process_id)
 selected_id = selected_calc.id
 
-# Validação de segurança
+# Validação de segurança (type narrowing para Pylance)
 if selected_id is None:
     st.error("Erro: ID do processo inválido")
     st.stop()
+
+# Type narrowing: após st.stop(), selected_id é garantidamente int
+assert selected_id is not None
 
 st.divider()
 
