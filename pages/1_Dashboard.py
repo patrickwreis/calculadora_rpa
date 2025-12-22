@@ -7,7 +7,7 @@ from src.database import DatabaseManager
 from src.ui.auth import require_auth
 from src.ui.auth_components import render_logout_button
 from src.ui import EmptyStateManager
-from src.calculator.utils import format_currency
+from src.calculator.utils import format_currency, calculate_automation_metrics
 from src.services import (
     MetricsCalculator,
     PageService,
@@ -67,10 +67,14 @@ metrics = MetricsCalculator.aggregate_metrics(calculations)
 
 # Calcula FTE (Full Time Equivalent) - considera 220h/mês como padrão (44h semanais CLT Brasil)
 HOURS_PER_FTE = 220
-total_fte = sum(
-    (c.current_time_per_month * c.expected_automation_percentage / 100) / HOURS_PER_FTE
-    for c in calculations
-)
+total_fte = 0.0
+for c in calculations:
+    metrics_calc = calculate_automation_metrics(
+        expected_automation_percentage=c.expected_automation_percentage,
+        exception_rate=getattr(c, 'exception_rate', 0.0)
+    )
+    freed_hours = c.current_time_per_month * (metrics_calc["fully_automated_pct"] / 100.0)
+    total_fte += freed_hours / HOURS_PER_FTE
 
 col1, col2, col3, col4, col5, col6 = st.columns(6)
 
@@ -127,10 +131,16 @@ best_payback_calc = min(calculations, key=lambda c: c.payback_period_months)
 best_savings_calc = max(calculations, key=lambda c: c.annual_savings)
 
 # Calcula FTE por processo e encontra o maior
-calc_with_fte = [
-    (c, (c.current_time_per_month * c.expected_automation_percentage / 100) / HOURS_PER_FTE)
-    for c in calculations
-]
+calc_with_fte = []
+for c in calculations:
+    metrics_calc = calculate_automation_metrics(
+        expected_automation_percentage=c.expected_automation_percentage,
+        exception_rate=getattr(c, 'exception_rate', 0.0)
+    )
+    freed_hours = c.current_time_per_month * (metrics_calc["fully_automated_pct"] / 100.0)
+    fte_value = freed_hours / HOURS_PER_FTE
+    calc_with_fte.append((c, fte_value))
+
 best_fte_calc, best_fte_value = max(calc_with_fte, key=lambda x: x[1])
 
 colh1, colh2, colh3, colh4 = st.columns(4)

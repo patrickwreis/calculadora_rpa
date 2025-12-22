@@ -157,17 +157,21 @@ def create_summary_report(calculations):
         st.info("Nenhum processo cadastrado para gerar relatório.")
         return
     
-    df = pd.DataFrame([
-        {
+    data_list = []
+    for calc in calculations:
+        freed_hours, freed_fte = compute_efficiency(calc)
+        data_list.append({
             "Processo": calc.process_name,
             "Departamento": calc.department or "N/A",
+            "Horas Liberadas/mês": freed_hours,
+            "FTE Liberado": freed_fte,
             "ROI Ano 1": calc.roi_percentage_first_year,
             "Payback (meses)": calc.payback_period_months,
             "Economia Anual": calc.annual_savings,
             "Data Criação": calc.created_at.strftime("%d/%m/%Y") if calc.created_at else "N/A",
-        }
-        for calc in calculations
-    ])
+        })
+    
+    df = pd.DataFrame(data_list)
     
     col1, col2, col3, col4 = st.columns(4)
     
@@ -210,6 +214,8 @@ def create_summary_report(calculations):
         column_config={
             "Processo": st.column_config.TextColumn(width="large"),
             "Departamento": st.column_config.TextColumn(width="medium"),
+            "Horas Liberadas/mês": st.column_config.NumberColumn(format="%.1f", width="small"),
+            "FTE Liberado": st.column_config.NumberColumn(format="%.2f", width="small"),
             "ROI Ano 1": st.column_config.NumberColumn(format="%.1f%%", width="small"),
             "Payback (meses)": st.column_config.NumberColumn(format="%.1f", width="small"),
             "Economia Anual": st.column_config.NumberColumn(format="R$ %.2f", width="medium"),
@@ -232,9 +238,13 @@ def create_department_report(calculations):
     
     dept_data = []
     for dept, calcs in sorted(departments.items()):
+        total_freed_hours = sum(compute_efficiency(c)[0] for c in calcs)
+        total_freed_fte = sum(compute_efficiency(c)[1] for c in calcs)
         dept_data.append({
             "Departamento": dept,
             "Qtd. Processos": len(calcs),
+            "Horas Liberadas/mês": total_freed_hours,
+            "FTE Liberado": total_freed_fte,
             "ROI Médio (%)": sum(c.roi_percentage_first_year for c in calcs) / len(calcs),
             "Economia Anual": sum(c.annual_savings for c in calcs),
             "Payback Médio": sum(c.payback_period_months for c in calcs) / len(calcs),
@@ -250,6 +260,8 @@ def create_department_report(calculations):
         column_config={
             "Departamento": st.column_config.TextColumn(width="large"),
             "Qtd. Processos": st.column_config.NumberColumn(width="small"),
+            "Horas Liberadas/mês": st.column_config.NumberColumn(format="%.1f", width="small"),
+            "FTE Liberado": st.column_config.NumberColumn(format="%.2f", width="small"),
             "ROI Médio (%)": st.column_config.NumberColumn(format="%.1f%%", width="medium"),
             "Economia Anual": st.column_config.NumberColumn(format="R$ %.2f", width="medium"),
             "Payback Médio": st.column_config.NumberColumn(format="%.1f", width="small"),
@@ -291,8 +303,11 @@ def create_financial_report(calculations):
     
     financial_data = []
     for calc in calculations:
+        freed_hours, freed_fte = compute_efficiency(calc)
         financial_data.append({
             "Processo": calc.process_name,
+            "Horas Liberadas/mês": freed_hours,
+            "FTE Liberado": freed_fte,
             "Investimento Inicial": calc.rpa_implementation_cost,
             "Custo Mensal": calc.rpa_monthly_cost,
             "Economia Mensal": calc.monthly_savings,
@@ -310,6 +325,8 @@ def create_financial_report(calculations):
         hide_index=True,
         column_config={
             "Processo": st.column_config.TextColumn(width="large"),
+            "Horas Liberadas/mês": st.column_config.NumberColumn(format="%.1f", width="small"),
+            "FTE Liberado": st.column_config.NumberColumn(format="%.2f", width="small"),
             "Investimento Inicial": st.column_config.NumberColumn(format="R$ %.2f", width="medium"),
             "Custo Mensal": st.column_config.NumberColumn(format="R$ %.2f", width="small"),
             "Economia Mensal": st.column_config.NumberColumn(format="R$ %.2f", width="medium"),

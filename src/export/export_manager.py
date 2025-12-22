@@ -99,6 +99,8 @@ class ExportManager:
                 elements.append(Paragraph(f"{idx}. {process_name}", heading_style))
                 
                 # Basic information
+                freed_hours = calc.get('freed_hours_per_month', 0)
+                freed_fte = calc.get('freed_fte', 0)
                 basic_info = [
                     ['Campo', 'Valor'],
                     ['Departamento', calc.get('department', '—')],
@@ -106,6 +108,8 @@ class ExportManager:
                     ['Pessoas Envolvidas', str(calc.get('people_involved', 0))],
                     ['Sistemas', str(calc.get('systems_quantity', 0))],
                     ['Transações Diárias', f"{calc.get('daily_transactions', 0):,.0f}"],
+                    ['Horas Liberadas/mês', f"{freed_hours:.1f}"],
+                    ['FTE Liberado', f"{freed_fte:.2f}"],
                 ]
                 
                 basic_table = Table(basic_info, colWidths=[2.5 * inch, 3.5 * inch])
@@ -257,7 +261,7 @@ class ExportManager:
             )
             
             # Summary headers
-            headers = ['Processo', 'Economia Mensal (R$)', 'Economia Anual (R$)', 'ROI 1º Ano (R$)', 'ROI %']
+            headers = ['Processo', 'Horas Liberadas/mês', 'FTE Liberado', 'Economia Mensal (R$)', 'Economia Anual (R$)', 'ROI 1º Ano (R$)', 'ROI %']
             for col, header in enumerate(headers, 1):
                 cell = summary_sheet.cell(row=1, column=col)
                 cell.value = header
@@ -269,25 +273,31 @@ class ExportManager:
             # Summary data
             row = 2
             for calc in calculations:
+                freed_hours = calc.get('freed_hours_per_month', 0)
+                freed_fte = calc.get('freed_fte', 0)
                 summary_sheet.cell(row=row, column=1).value = calc.get('process_name', '—')
-                summary_sheet.cell(row=row, column=2).value = calc.get('monthly_savings', 0)
-                summary_sheet.cell(row=row, column=3).value = calc.get('annual_savings', 0)
-                summary_sheet.cell(row=row, column=4).value = calc.get('roi_first_year', 0)
-                summary_sheet.cell(row=row, column=5).value = calc.get('roi_percentage_first_year', 0)
+                summary_sheet.cell(row=row, column=2).value = freed_hours
+                summary_sheet.cell(row=row, column=3).value = freed_fte
+                summary_sheet.cell(row=row, column=4).value = calc.get('monthly_savings', 0)
+                summary_sheet.cell(row=row, column=5).value = calc.get('annual_savings', 0)
+                summary_sheet.cell(row=row, column=6).value = calc.get('roi_first_year', 0)
+                summary_sheet.cell(row=row, column=7).value = calc.get('roi_percentage_first_year', 0)
                 
                 # Format currency and percentage
-                summary_sheet.cell(row=row, column=2).number_format = '"R$" #,##0.00'
-                summary_sheet.cell(row=row, column=3).number_format = '"R$" #,##0.00'
+                summary_sheet.cell(row=row, column=2).number_format = '0.0'
+                summary_sheet.cell(row=row, column=3).number_format = '0.00'
                 summary_sheet.cell(row=row, column=4).number_format = '"R$" #,##0.00'
-                summary_sheet.cell(row=row, column=5).number_format = '0.0"%"'
+                summary_sheet.cell(row=row, column=5).number_format = '"R$" #,##0.00'
+                summary_sheet.cell(row=row, column=6).number_format = '"R$" #,##0.00'
+                summary_sheet.cell(row=row, column=7).number_format = '0.0"%"'
                 
                 # Borders and alternating background
                 if row % 2 == 0:
                     alt_fill = PatternFill(start_color="f0f0f0", end_color="f0f0f0", fill_type="solid")
-                    for col in range(1, 6):
+                    for col in range(1, 8):
                         summary_sheet.cell(row=row, column=col).fill = alt_fill
                 
-                for col in range(1, 6):
+                for col in range(1, 8):
                     summary_sheet.cell(row=row, column=col).border = border
                 
                 row += 1
@@ -331,6 +341,8 @@ class ExportManager:
                     ('Pessoas Envolvidas', calc.get('people_involved', 0)),
                     ('Sistemas', calc.get('systems_quantity', 0)),
                     ('Transações Diárias', calc.get('daily_transactions', 0)),
+                    ('Horas Liberadas/mês', f"{calc.get('freed_hours_per_month', 0):.1f}"),
+                    ('FTE Liberado', f"{calc.get('freed_fte', 0):.2f}"),
                 ]
                 
                 for label, value in basic_fields:
