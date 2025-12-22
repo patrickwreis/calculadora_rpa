@@ -102,16 +102,20 @@ if st.session_state.get("show_auth_modal", False):
                             user = db.get_user_by_email(login_email)
                             
                             if user and verify_password(login_password, user.password_hash):
-                                # Salvar sessão persistentemente
-                                SessionManager.save_session(
-                                    user_id=user.id,
-                                    username=user.username,
-                                    email=user.email,
-                                    is_admin=user.is_admin
-                                )
-                                st.session_state.show_auth_modal = False
-                                show_auth_success_message(user.email)
-                                st.rerun()
+                                # Validar que user_id não é None antes de salvar
+                                if user.id is None:
+                                    st.error("❌ Erro ao carregar dados do usuário")
+                                else:
+                                    # Salvar sessão persistentemente
+                                    SessionManager.save_session(
+                                        user_id=user.id,
+                                        username=user.username,
+                                        email=user.email,
+                                        is_admin=user.is_admin
+                                    )
+                                    st.session_state.show_auth_modal = False
+                                    show_auth_success_message(user.email)
+                                    st.rerun()
                             else:
                                 st.error("❌ Email ou senha incorretos")
             

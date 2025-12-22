@@ -67,15 +67,18 @@ class SessionManager:
         st.markdown(js_code, unsafe_allow_html=True)
     
     @staticmethod
-    def save_session(user_id: int, username: str, email: str, is_admin: bool) -> None:
+    def save_session(user_id: Optional[int], username: str, email: str, is_admin: bool) -> None:
         """Salva dados de sessão em localStorage.
         
         Args:
-            user_id: ID do usuário
+            user_id: ID do usuário (não pode ser None)
             username: Nome de usuário
             email: Email do usuário
             is_admin: Se é admin
         """
+        if user_id is None:
+            raise ValueError("user_id não pode ser None")
+        
         session_data = {
             "user_id": user_id,
             "username": username,
@@ -152,7 +155,7 @@ class SessionManager:
         """Limpa toda a sessão de autenticação."""
         # Remove de session_state
         for key in list(st.session_state.keys()):
-            if key.startswith("auth_"):
+            if isinstance(key, str) and key.startswith("auth_"):
                 del st.session_state[key]
         
         # Injeta JS para limpar localStorage

@@ -195,14 +195,19 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
                 else:
                     # Login successful - reset rate limiter and save session persistently
                     login_limiter.reset(login_username)
-                    SessionManager.save_session(
-                        user_id=user.id,
-                        username=user.username,
-                        email=user.email,
-                        is_admin=user.is_admin
-                    )
-                    st.success("✅ Login realizado com sucesso!")
-                    st.rerun()
+                    
+                    # Validar que user_id não é None antes de salvar
+                    if user.id is None:
+                        st.error("❌ Erro ao carregar dados do usuário")
+                    else:
+                        SessionManager.save_session(
+                            user_id=user.id,
+                            username=user.username,
+                            email=user.email,
+                            is_admin=user.is_admin
+                        )
+                        st.success("✅ Login realizado com sucesso!")
+                        st.rerun()
     
     with tab2:
         st.markdown("#### Crie uma nova conta")
