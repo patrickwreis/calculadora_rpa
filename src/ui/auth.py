@@ -292,6 +292,5 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
 
 def logout():
     """Limpa estado de autenticação."""
-    st.session_state.pop("auth_user", None)
-    st.session_state.pop("auth_user_id", None)
-    st.session_state.pop("auth_is_admin", None)
+    # Use SessionManager para limpar sessão persistente (banco de dados + query_params)
+    SessionManager.clear_session()

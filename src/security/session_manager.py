@@ -61,11 +61,8 @@ class SessionManager:
         Returns:
             True se sessão foi restaurada com sucesso
         """
-        # Se já tem sessão válida em session_state, não restaura
-        if "auth_user" in st.session_state and st.session_state.auth_user:
-            return True
-        
         # Tenta restaurar de query_params
+        # NOTA: O session_state é resetado em cada F5, então sempre verificamos o token
         if "session_token" not in st.query_params:
             return False
         
