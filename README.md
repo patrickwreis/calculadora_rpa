@@ -40,7 +40,19 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-4. Execute a aplicação
+4. Configure as credenciais de administrador
+```bash
+# Gere credenciais seguras
+python scripts/generate_credentials.py
+
+# Copie o arquivo de exemplo
+cp .env.example .env
+
+# Edite .env com as credenciais geradas
+# Adicione também as credenciais de email (opcional)
+```
+
+5. Execute a aplicação
 ```bash
 streamlit run streamlit_app.py
 ```

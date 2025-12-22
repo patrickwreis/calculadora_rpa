@@ -129,7 +129,7 @@ class InputValidator:
         # Validate positive numbers
         positive_fields = [
             ('current_time_per_month', 'Tempo atual por mês', False),
-            ('hourly_rate', 'Taxa horária', False),
+            ('hourly_rate', 'Valor hora', False),
             ('rpa_implementation_cost', 'Custo de implementação', True),
             ('rpa_monthly_cost', 'Custo mensal RPA', True),
         ]
