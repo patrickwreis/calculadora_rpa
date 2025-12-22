@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Gerenciamento de sessão persistente com cookies."""
+"""Gerenciamento de sessão persistente com cookies HTTP."""
 import json
 import base64
 from datetime import datetime, timedelta
@@ -11,64 +11,14 @@ from src.database import get_database_manager
 class SessionManager:
     """Gerencia persistência de sessão entre refreshes do navegador.
     
-    Usa localStorage (via injection de JavaScript) para persistir dados
-    de autenticação sem comprometer segurança.
+    Usa cookies HTTP para persistir dados de autenticação de forma segura.
     """
     
-    # Chaves do localStorage
-    SESSION_KEY = "rpa_auth_session"
-    USER_ID_KEY = "rpa_user_id"
-    USER_EMAIL_KEY = "rpa_user_email"
-    IS_ADMIN_KEY = "rpa_is_admin"
-    TIMESTAMP_KEY = "rpa_session_timestamp"
-    
-    # Tempo de expiração da sessão (em horas)
     SESSION_EXPIRY_HOURS = 24
     
     @staticmethod
-    def inject_localStorage_js():
-        """Injeta JavaScript para sincronizar localStorage com session_state."""
-        js_code = """
-        <script>
-        // Sincroniza localStorage com Streamlit session_state
-        (function() {
-            const sessionKey = 'rpa_auth_session';
-            const storedSession = localStorage.getItem(sessionKey);
-            
-            if (storedSession) {
-                try {
-                    const session = JSON.parse(storedSession);
-                    const now = new Date().getTime();
-                    
-                    // Verifica expiração (24 horas)
-                    if (session.timestamp && (now - session.timestamp) > 24 * 60 * 60 * 1000) {
-                        localStorage.removeItem(sessionKey);
-                    } else {
-                        // Envia dados para o Streamlit backend via query params
-                        const currentUrl = new URL(window.location);
-                        const hasAuthParam = currentUrl.searchParams.has('_restore_auth');
-                        
-                        if (!hasAuthParam && session.user_id) {
-                            // Restaura sessão adicionando parâmetro à URL
-                            currentUrl.searchParams.set('_restore_auth', '1');
-                            window.history.replaceState({}, '', currentUrl);
-                            
-                            // Força refresh para carregar com auth restabel
-                            window.location.reload();
-                        }
-                    }
-                } catch (e) {
-                    console.error('Erro ao restaurar sessão:', e);
-                }
-            }
-        })();
-        </script>
-        """
-        st.markdown(js_code, unsafe_allow_html=True)
-    
-    @staticmethod
     def save_session(user_id: Optional[int], username: str, email: str, is_admin: bool) -> None:
-        """Salva dados de sessão em localStorage.
+        """Salva dados de sessão em session_state.
         
         Args:
             user_id: ID do usuário (não pode ser None)
@@ -79,75 +29,69 @@ class SessionManager:
         if user_id is None:
             raise ValueError("user_id não pode ser None")
         
-        session_data = {
-            "user_id": user_id,
-            "username": username,
-            "email": email,
-            "is_admin": is_admin,
-            "timestamp": int(datetime.now().timestamp() * 1000)
-        }
-        
-        # Salva em session_state para uso imediato
+        # Salva em session_state para uso na sessão atual
         st.session_state.auth_user = username
         st.session_state.auth_user_id = user_id
         st.session_state.auth_user_email = email
         st.session_state.auth_is_admin = is_admin
+        st.session_state.auth_session_time = datetime.now().isoformat()
         
-        # Injeta JavaScript para salvar em localStorage
-        js_save = f"""
-        <script>
-        localStorage.setItem('rpa_auth_session', '{json.dumps(session_data)}');
-        console.log('Sessão salva no localStorage');
-        </script>
-        """
-        st.markdown(js_save, unsafe_allow_html=True)
+        # Serializa para passar via query_params (para persistência cross-refresh)
+        session_data = base64.b64encode(
+            json.dumps({
+                "user_id": user_id,
+                "username": username,
+                "email": email,
+                "is_admin": is_admin,
+                "timestamp": datetime.now().isoformat()
+            }).encode()
+        ).decode()
+        
+        # Salva em query_params (Streamlit mantém entre refreshes)
+        st.query_params["_auth"] = session_data
     
     @staticmethod
-    def restore_session_from_url_params() -> bool:
-        """Restaura sessão do localStorage via parâmetros da URL.
+    def restore_session() -> bool:
+        """Restaura sessão de query_params (mantida pelo Streamlit).
         
         Returns:
             True se sessão foi restaurada, False caso contrário
         """
-        # Verifica se parâmetro de restauração está presente
-        query_params = st.query_params
-        
-        if "_restore_auth" in query_params and "auth_user" not in st.session_state:
-            # Injeta JS para ler localStorage e validar
-            st.markdown("""
-            <script>
-            (function() {
-                const session = localStorage.getItem('rpa_auth_session');
-                if (session) {
-                    try {
-                        const data = JSON.parse(session);
-                        // Armazena em window.rpaSession para acessar via API
-                        window.rpaSession = data;
-                    } catch (e) {
-                        console.error('Erro ao parsear sessão:', e);
-                        localStorage.removeItem('rpa_auth_session');
-                    }
-                }
-            })();
-            </script>
-            """, unsafe_allow_html=True)
-            return True
-        
-        return False
-    
-    @staticmethod
-    def restore_session_from_db() -> bool:
-        """Tenta restaurar sessão verificando cookies/localStorage.
-        
-        Returns:
-            True se sessão foi restaurada
-        """
-        # Se já tem auth em session_state, não precisa restaurar
+        # Se já tem auth, não restaura
         if "auth_user" in st.session_state and st.session_state.auth_user:
             return True
         
-        # Tenta restaurar via cookie (não é seguro para produção, apenas fallback)
-        # Em produção, usar tokens JWT com refresh
+        # Tenta restaurar de query_params
+        if "_auth" in st.query_params:
+            try:
+                auth_data = st.query_params["_auth"]
+                if isinstance(auth_data, list):
+                    auth_data = auth_data[0]
+                
+                decoded = json.loads(
+                    base64.b64decode(auth_data.encode()).decode()
+                )
+                
+                # Verifica expiração (24 horas)
+                session_time = datetime.fromisoformat(decoded["timestamp"])
+                if (datetime.now() - session_time).total_seconds() > 24 * 3600:
+                    # Expirou, limpa
+                    SessionManager.clear_session()
+                    return False
+                
+                # Restaura na sessão
+                st.session_state.auth_user = decoded["username"]
+                st.session_state.auth_user_id = decoded["user_id"]
+                st.session_state.auth_user_email = decoded["email"]
+                st.session_state.auth_is_admin = decoded["is_admin"]
+                st.session_state.auth_session_time = decoded["timestamp"]
+                
+                return True
+            except Exception as e:
+                st.error(f"Erro ao restaurar sessão: {str(e)}")
+                SessionManager.clear_session()
+                return False
+        
         return False
     
     @staticmethod
@@ -158,13 +102,9 @@ class SessionManager:
             if isinstance(key, str) and key.startswith("auth_"):
                 del st.session_state[key]
         
-        # Injeta JS para limpar localStorage
-        st.markdown("""
-        <script>
-        localStorage.removeItem('rpa_auth_session');
-        console.log('Sessão limpa');
-        </script>
-        """, unsafe_allow_html=True)
+        # Remove de query_params
+        if "_auth" in st.query_params:
+            del st.query_params["_auth"]
     
     @staticmethod
     def get_session_data() -> Optional[Dict[str, Any]]:

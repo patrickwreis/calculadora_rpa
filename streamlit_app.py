@@ -21,8 +21,8 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# Injetar JavaScript para persistência de sessão
-SessionManager.inject_localStorage_js()
+# Restaurar sessão após refresh (deve ser feito NO INÍCIO antes de qualquer renderização)
+SessionManager.restore_session()
 
 # Hide page navigation if not logged in
 if "auth_user" not in st.session_state or st.session_state.auth_user is None:
