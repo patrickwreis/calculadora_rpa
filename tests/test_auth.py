@@ -39,10 +39,28 @@ def test_load_credentials_builds_lookup_and_credentials():
 
 
 def test_ensure_default_admin_creates_when_missing(monkeypatch):
+    """Test that default admin is created only when env vars are set."""
     db = MagicMock()
     db.get_user_by_username.return_value = None
+    
+    # Set env vars for admin creation
+    monkeypatch.setenv("AUTH_USERNAME", "testadmin")
+    monkeypatch.setenv("AUTH_PASSWORD", "testpass123")
+    
     auth._ensure_default_admin(db)
     db.create_user.assert_called_once()
+
+
+def test_ensure_default_admin_skips_without_env_vars(monkeypatch):
+    """Test that default admin is NOT created when env vars are missing."""
+    db = MagicMock()
+    
+    # Remove env vars
+    monkeypatch.delenv("AUTH_USERNAME", raising=False)
+    monkeypatch.delenv("AUTH_PASSWORD", raising=False)
+    
+    auth._ensure_default_admin(db)
+    db.create_user.assert_not_called()
 
 
 def test_ensure_default_admin_skips_when_exists():

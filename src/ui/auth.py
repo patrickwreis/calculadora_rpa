@@ -3,8 +3,9 @@
 
 Regras:
 - Por padrão a autenticação é obrigatória.
-- Credenciais padrão de desenvolvimento: admin / admin (substitua via env AUTH_USERNAME/AUTH_PASSWORD).
+- Credenciais do admin devem ser configuradas via AUTH_USERNAME e AUTH_PASSWORD no .env.
 - Pode ser desabilitada apenas se AUTH_REQUIRED=false.
+- SEGURANÇA: Nunca use senhas padrão hardcoded (admin/admin) em produção.
 """
 import os
 import smtplib
@@ -16,6 +17,7 @@ import streamlit as st
 import bcrypt
 
 from src.database import DatabaseManager
+from src.security import get_login_limiter, get_password_reset_limiter
 
 
 def _truncate_for_bcrypt(password: str) -> str:
@@ -113,14 +115,27 @@ def _load_credentials(db: DatabaseManager) -> Tuple[dict, Dict[str, Dict[str, An
 
 
 def _ensure_default_admin(db: DatabaseManager) -> None:
-    """Create default admin if none exists (admin/admin or env overrides)."""
+    """Create default admin if none exists (requires AUTH_USERNAME and AUTH_PASSWORD env vars).
+    
+    SECURITY: Default credentials must be set via environment variables.
+    Never use hardcoded defaults like admin/admin in production.
+    """
     from src.models import User
-    admin_user = os.getenv("AUTH_USERNAME") or "admin"
-    admin_pass = os.getenv("AUTH_PASSWORD") or "admin"
-    admin_email = os.getenv("AUTH_EMAIL") or "admin@localhost"
+    
+    # Require explicit env vars for admin creation - no hardcoded defaults
+    admin_user = os.getenv("AUTH_USERNAME")
+    admin_pass = os.getenv("AUTH_PASSWORD")
+    admin_email = os.getenv("AUTH_EMAIL", "admin@localhost")
+    
+    # Only create admin if both username and password are explicitly set
+    if not admin_user or not admin_pass:
+        # No admin configured - skip creation
+        return
+    
     existing = db.get_user_by_username(admin_user)
     if existing:
         return
+    
     db.create_user(admin_user, hash_password(admin_pass), email=admin_email, is_admin=True, is_active=True)
 
 
@@ -162,15 +177,24 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
         login_password = st.text_input("🔒 Senha", type="password", key=f"{form_key}_login_pass", placeholder="sua senha")
         
         if st.button("🔓 Fazer Login", width='stretch', key=f"{form_key}_login_btn", type="primary"):
-            if not login_username or not login_password:
+            # Rate limiting check
+            login_limiter = get_login_limiter()
+            if login_limiter.is_rate_limited(login_username):
+                reset_time = login_limiter.get_reset_time(login_username)
+                st.error(f"❌ Muitas tentativas de login. Tente novamente em {reset_time} segundos.")
+            elif not login_username or not login_password:
                 st.error("❌ Usuário e senha são obrigatórios")
             else:
                 user = db.get_user_by_username(login_username)
+                login_limiter.record_attempt(login_username)
+                
                 if not user or not user.is_active:
                     st.error("❌ Usuário não encontrado ou inativo")
                 elif not verify_password(login_password, user.password_hash):
                     st.error("❌ Credenciais inválidas")
                 else:
+                    # Login successful - reset rate limiter
+                    login_limiter.reset(login_username)
                     st.session_state.auth_user = login_username
                     st.session_state.auth_user_id = user.id
                     st.session_state.auth_is_admin = user.is_admin
@@ -215,9 +239,15 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
         recovery_email = st.text_input("📧 Digite seu email", key=f"{form_key}_recovery_email", placeholder="seu@email.com")
         
         if st.button("🔐 Recuperar Senha", width='stretch', key=f"{form_key}_recovery_btn", type="primary"):
-            if not recovery_user or not recovery_email:
+            # Rate limiting for password reset
+            reset_limiter = get_password_reset_limiter()
+            if reset_limiter.is_rate_limited(recovery_email):
+                reset_time = reset_limiter.get_reset_time(recovery_email)
+                st.error(f"❌ Muitas tentativas. Tente novamente em {reset_time} segundos.")
+            elif not recovery_user or not recovery_email:
                 st.error("❌ Usuário e email são obrigatórios")
             else:
+                reset_limiter.record_attempt(recovery_email)
                 user = db.get_user_by_username(recovery_user)
                 if not user:
                     st.error("❌ Usuário não encontrado")
@@ -245,7 +275,7 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
     st.divider()
     st.markdown("""
     <div style='text-align: center; color: #666; padding: 20px;'>
-        <p><strong>💡 Dica:</strong> Admin padrão: <code>admin</code> / <code>admin</code></p>
+        <p><small>💡 Primeira vez? Entre em contato com o administrador para obter suas credenciais.</small></p>
     </div>
     """, unsafe_allow_html=True)
     
