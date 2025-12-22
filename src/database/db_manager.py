@@ -455,9 +455,11 @@ class DatabaseManager:
             session.commit()
             return True
     
-    def update_session_token(self, user_id: int, token: Optional[str], expiry: Optional['datetime']) -> bool:
+    def update_session_token(self, user_id: Optional[int], token: Optional[str], expiry: Optional['datetime']) -> bool:
         """Update user session token."""
         from src.models import User
+        if user_id is None:
+            return False
         with Session(self.engine) as session:
             user = session.get(User, user_id)
             if not user:
