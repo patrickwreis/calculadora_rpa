@@ -3,6 +3,7 @@
 from sqlalchemy import create_engine, text
 from sqlmodel import Session, select
 from typing import List, Optional, TYPE_CHECKING, Tuple, Any
+from datetime import datetime
 from config import DATABASE_URL
 import functools
 import time
@@ -453,6 +454,27 @@ class DatabaseManager:
             session.add(user)
             session.commit()
             return True
+    
+    def update_session_token(self, user_id: int, token: Optional[str], expiry: Optional['datetime']) -> bool:
+        """Update user session token."""
+        from src.models import User
+        with Session(self.engine) as session:
+            user = session.get(User, user_id)
+            if not user:
+                return False
+            user.session_token = token
+            user.session_token_expiry = expiry
+            session.add(user)
+            session.commit()
+            return True
+    
+    def get_user_by_session_token(self, token: str) -> Optional['User']:
+        """Get user by session token."""
+        from src.models import User
+        with Session(self.engine) as session:
+            statement = select(User).where(User.session_token == token)
+            user = session.exec(statement).first()
+            return user
 
 
 

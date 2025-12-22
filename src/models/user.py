@@ -16,3 +16,5 @@ class User(SQLModel, table=True):
     is_active: bool = True
     is_admin: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    session_token: Optional[str] = Field(default=None, index=True)
+    session_token_expiry: Optional[datetime] = Field(default=None)
