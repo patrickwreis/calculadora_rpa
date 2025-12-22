@@ -32,6 +32,7 @@ def db(temp_db, monkeypatch):
     
     # Create new manager with temp db
     db_manager = DatabaseManager()
+    db_manager._cache_manager.clear()  # Ensure no cached data leaks between tests
     
     yield db_manager
     
