@@ -240,7 +240,7 @@ def format_months(months: float) -> str:
     elif years > 0:
         return f"{years} ano{'s' if years > 1 else ''}"
     else:
-        return f"{remaining_months} mês{'es' if remaining_months > 1 else ''}"
+        return f"{remaining_months} {'meses' if remaining_months > 1 else 'mês'}"
 
 
 def validate_input(data: Dict[str, Any]) -> Tuple[bool, str]:
