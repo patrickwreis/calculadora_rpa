@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """Dashboard Executivo - Overview, Ranking e Análise Comparativa com 3 Abas"""
 import streamlit as st
-import pandas as pd
 
 from config import APP_NAME
 from src.database import DatabaseManager
 from src.ui.auth import require_auth
 from src.ui.auth_components import render_logout_button
 from src.ui import EmptyStateManager
+from src.calculator.utils import format_currency
 from src.services import (
     MetricsCalculator,
     PageService,
@@ -65,7 +65,14 @@ st.markdown("### 📈 Indicadores Principais")
 
 metrics = MetricsCalculator.aggregate_metrics(calculations)
 
-col1, col2, col3, col4, col5 = st.columns(5)
+# Calcula FTE (Full Time Equivalent) - considera 220h/mês como padrão (44h semanais CLT Brasil)
+HOURS_PER_FTE = 220
+total_fte = sum(
+    (c.current_time_per_month * c.people_involved * c.expected_automation_percentage / 100) / HOURS_PER_FTE
+    for c in calculations
+)
+
+col1, col2, col3, col4, col5, col6 = st.columns(6)
 
 with col1:
     st.metric(
@@ -75,7 +82,6 @@ with col1:
     )
 
 with col2:
-    from src.calculator.utils import format_currency
     st.metric(
         "💰 Economia Anual",
         format_currency(metrics["total_savings"]),
@@ -85,13 +91,21 @@ with col2:
 
 with col3:
     st.metric(
+        "👥 FTE Liberado",
+        f"{total_fte:.1f}",
+        delta="Full Time Equivalent",
+        help="Total de pessoas equivalentes liberadas (220h/mês - CLT Brasil)"
+    )
+
+with col4:
+    st.metric(
         "💡 ROI Médio",
         f"{metrics['avg_roi']:.1f}%",
         delta=f"Mediana: {metrics['median_roi']:.1f}%",
         help="Retorno médio vs. mediano no primeiro ano"
     )
 
-with col4:
+with col5:
     st.metric(
         "⏱️ Payback Médio",
         f"{metrics['avg_payback']:.1f}m",
@@ -99,17 +113,67 @@ with col4:
         help="Tempo médio para recuperar investimento"
     )
 
-with col5:
+with col6:
     st.metric(
         "💻 Investimento Total",
         format_currency(metrics["total_investment"]),
         help="Total investido em RPA"
     )
 
+# Destaques (seleção atual)
+st.markdown("#### 🏅 Destaques")
+best_roi_calc = max(calculations, key=lambda c: c.roi_percentage_first_year)
+best_payback_calc = min(calculations, key=lambda c: c.payback_period_months)
+best_savings_calc = max(calculations, key=lambda c: c.annual_savings)
+
+# Calcula FTE por processo e encontra o maior
+calc_with_fte = [
+    (c, (c.current_time_per_month * c.people_involved * c.expected_automation_percentage / 100) / HOURS_PER_FTE)
+    for c in calculations
+]
+best_fte_calc, best_fte_value = max(calc_with_fte, key=lambda x: x[1])
+
+colh1, colh2, colh3, colh4 = st.columns(4)
+
+with colh1:
+    st.metric(
+        "Maior ROI",
+        f"{best_roi_calc.process_name}",
+        delta=f"{best_roi_calc.roi_percentage_first_year:.0f}%",
+        help="Processo com maior ROI na seleção atual"
+    )
+
+with colh2:
+    st.metric(
+        "Menor payback",
+        f"{best_payback_calc.process_name}",
+        delta=f"{best_payback_calc.payback_period_months:.1f} meses",
+        help="Processo com menor tempo de payback"
+    )
+
+with colh3:
+    st.metric(
+        "Maior economia anual",
+        f"{best_savings_calc.process_name}",
+        delta=f"{format_currency(best_savings_calc.annual_savings)}",
+        help="Processo com maior economia anual estimada"
+    )
+
+with colh4:
+    st.metric(
+        "Maior FTE liberado",
+        f"{best_fte_calc.process_name}",
+        delta=f"{best_fte_value:.2f} FTE",
+        help="Processo que libera mais pessoas equivalentes"
+    )
+
 st.divider()
 
 # ========== TABS - ANALYSIS SECTIONS ==========
-tab1, tab2, tab3 = st.tabs(["📈 Overview", "🏆 Ranking", "🔍 Comparativo"])
+tab1, tab2 = st.tabs([
+    "📈 Overview",
+    "🏅 Ranking & Comparativo",
+])
 
 # ====== TAB 1: OVERVIEW ======
 with tab1:
@@ -154,103 +218,90 @@ with tab1:
     )
     st.dataframe(df_top5, use_container_width=True, hide_index=True)
 
-# ====== TAB 2: RANKING ======
+# ====== TAB 2: RANKING & COMPARATIVO ======
 with tab2:
-    st.markdown("#### 🏆 Top 10 Processos")
-    
-    # Metric selector
-    ranking_metric = st.radio(
-        "Ordenar por:",
-        options=["ROI", "Payback", "Economia"],
-        horizontal=True
-    )
-    
-    # Get top 10 by selected metric
-    if ranking_metric == "ROI":
-        top_10 = MetricsCalculator.top_by_metric(calculations, metric="roi", top=10)
-        metric_col = "ROI (%)"
-        ascending = False
-    elif ranking_metric == "Payback":
-        top_10 = MetricsCalculator.top_by_metric(calculations, metric="payback", top=10)
-        metric_col = "Payback (meses)"
-        ascending = True
-    else:  # Economia
-        top_10 = MetricsCalculator.top_by_metric(calculations, metric="savings", top=10)
-        metric_col = "Economia/Ano"
-        ascending = False
-    
-    # Prepare data for chart
-    ranking_data = []
-    for i, calc in enumerate(top_10, 1):
-        if ranking_metric == "ROI":
-            value = calc.roi_percentage_first_year
-        elif ranking_metric == "Payback":
-            value = calc.payback_period_months
-        else:
-            value = calc.annual_savings
-        
-        ranking_data.append({
-            "Processo": f"{i}. {calc.process_name}",
-            metric_col: value
-        })
-    
-    df_ranking = pd.DataFrame(ranking_data)
-    
-    # Create chart
-    fig_ranking = ChartFactory.bar_ranking(
-        df_ranking,
-        metric_col=metric_col,
-        process_col="Processo",
-        title=f"Top 10 por {ranking_metric}",
-        ascending=ascending,
-        height=500
-    )
-    st.plotly_chart(fig_ranking, use_container_width=True)
-    
-    st.markdown("#### 📊 Tabela Detalhada (Top 10)")
-    df_top10 = DataFrameBuilder.build_calculations_table(
-        top_10,
-        columns=["process", "department", "automation", "investment", "annual_savings", "roi", "payback"],
-        include_rank=True
-    )
-    st.dataframe(df_top10, use_container_width=True, hide_index=True)
+    st.markdown("#### 🏆 Ranking e Comparativo (tabela única)")
 
-# ====== TAB 3: COMPARATIVO ======
-with tab3:
-    st.markdown("#### 📊 Análise de Correlação: ROI vs Payback")
-    
-    # Prepare scatter data
-    scatter_data = pd.DataFrame([
-        {
-            "Processo": c.process_name,
-            "ROI (%)": c.roi_percentage_first_year,
-            "Payback (meses)": c.payback_period_months,
-            "Economia/Ano": c.annual_savings,
-            "Automação (%)": c.expected_automation_percentage,
+    col_a, col_b, col_c = st.columns([2, 1, 2])
+
+    with col_a:
+        ranking_metric = st.radio(
+            "Ordenar por:",
+            options=["ROI", "Payback", "Economia"],
+            horizontal=True,
+            help="ROI e Economia em ordem decrescente; Payback em ordem crescente."
+        )
+
+    with col_b:
+        top_n = st.selectbox(
+            "Quantidade (quando sem filtro)",
+            options=[10, 20, 50, 100],
+            index=0,
+            help="Usado apenas quando nenhum processo é selecionado."
+        )
+
+    process_names = [c.process_name for c in calculations]
+    default_selection = []
+
+    with col_c:
+        selected_processes = st.multiselect(
+            "Filtrar processos (vazio = todos)",
+            options=process_names,
+            default=default_selection,
+            max_selections=5,
+        )
+
+    metric_key = {
+        "ROI": "roi",
+        "Payback": "payback",
+        "Economia": "savings",
+    }[ranking_metric]
+
+    if selected_processes:
+        base_set = [c for c in calculations if c.process_name in selected_processes]
+        top_limit = len(base_set)
+    else:
+        base_set = calculations
+        top_limit = top_n
+
+    ordered_set = MetricsCalculator.top_by_metric(
+        base_set,
+        metric=metric_key,
+        top=top_limit
+    )
+
+    if not ordered_set:
+        st.info("Nenhum processo encontrado.")
+    else:
+        highlight_cols = {
+            "ROI": "ROI (%)",
+            "Payback": "Payback (meses)",
+            "Economia": "Economia/Ano",
         }
-        for c in calculations
-    ])
-    
-    fig_scatter = ChartFactory.scatter_correlation(
-        scatter_data,
-        x_col="ROI (%)",
-        y_col="Payback (meses)",
-        size_col="Economia/Ano",
-        color_col="Automação (%)",
-        title="Correlação: ROI vs Payback (tamanho = economia)",
-        height=500
-    )
-    st.plotly_chart(fig_scatter, use_container_width=True)
-    
-    st.markdown("#### 💰 Distribuição de ROI")
-    fig_roi_dist = ChartFactory.histogram_distribution(
-        scatter_data,
-        col="ROI (%)",
-        title="Distribuição de ROI (%)",
-        nbins=15,
-        height=400
-    )
-    st.plotly_chart(fig_roi_dist, use_container_width=True)
+        order_col = highlight_cols[ranking_metric]
+
+        st.markdown(f"##### 📋 Tabela — ordenado por {order_col}")
+        df_rank = DataFrameBuilder.build_calculations_table(
+            ordered_set,
+            columns=["process", "department", "automation", "investment", "annual_savings", "roi", "payback"],
+            include_rank=True,
+        )
+
+        st.dataframe(
+            df_rank,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "#": st.column_config.NumberColumn(label="#", width="small"),
+                "Processo": st.column_config.TextColumn(width="large"),
+                "Departamento": st.column_config.TextColumn(width="medium"),
+                "Automação": st.column_config.TextColumn(width="small"),
+                "Investimento": st.column_config.TextColumn(width="medium"),
+                "Economia/Ano": st.column_config.TextColumn(width="medium"),
+                "ROI (%)": st.column_config.TextColumn(width="small"),
+                "Payback (meses)": st.column_config.TextColumn(width="small"),
+            },
+        )
 
 st.divider()
 
