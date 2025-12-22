@@ -378,6 +378,10 @@ with st.form("roi_form"):
                 "infra_license_cost": infra_license_cost,
                 "total_monthly_cost": total_monthly_cost,
                 "maintenance_percentage": maintenance_percentage,
+                # Original input fields for edit form
+                "days_per_month": days_per_month,
+                "monthly_salary": monthly_salary,
+                "minutes_per_day": minutes_per_day,
             }
             
             st.session_state.show_results_dialog = True
@@ -564,6 +568,13 @@ def show_results_dialog():
                         "daily_transactions": st.session_state.calculator_results.get("daily_transactions", 100),
                         "error_rate": st.session_state.calculator_results.get("error_rate", 0),
                         "exception_rate": st.session_state.calculator_results.get("exception_rate", 0),
+                        
+                        # Input fields for edit form (to match add form exactly)
+                        "days_per_month": st.session_state.calculator_results.get("days_per_month", 22),
+                        "monthly_salary": st.session_state.calculator_results.get("monthly_salary", 0.0),
+                        "minutes_per_day": st.session_state.calculator_results.get("minutes_per_day", 0),
+                        "dev_hours": st.session_state.calculator_results.get("dev_hours", 0.0),
+                        "dev_hourly_rate": st.session_state.calculator_results.get("dev_hourly_rate", 150.0),
                     
                     # Automation Settings
                     "expected_automation_percentage": roi_input.expected_automation_percentage,

@@ -51,6 +51,13 @@ class Calculation(SQLModel, table=True):
     error_rate: float = 0.0  # percentage
     exception_rate: float = 0.0  # percentage
     
+    # Input fields for edit form (to match add form exactly)
+    days_per_month: int = Field(default=22)  # working days per month
+    monthly_salary: float = Field(default=0.0)  # salary + benefits per employee
+    minutes_per_day: int = Field(default=0)  # time spent per day in minutes
+    dev_hours: float = Field(default=0.0)  # development hours
+    dev_hourly_rate: float = Field(default=150.0)  # development hourly rate
+    
     # Automation Settings
     expected_automation_percentage: float
     

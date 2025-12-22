@@ -157,89 +157,114 @@ def edit_process_modal():
         
         with col1:
             process_name = st.text_input(
-                "Nome do Processo",
+                "Nome do Processo *",
                 value=selected_calc.process_name,
+                placeholder="Ex: Processamento de Facturas",
+                help="Identificar claramente o processo a ser automatizado"
             )
         
         with col2:
             department = st.text_input(
-                "Área / Departamento",
+                "Área / Departamento *",
                 value=getattr(selected_calc, 'department', ''),
+                placeholder="Ex: Financeiro",
+                help="Departamento ou área responsável pelo processo"
             )
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            people_involved = st.number_input(
+                "Número de funcionários *",
+                value=int(selected_calc.people_involved),
+                min_value=1,
+                max_value=100,
+                step=1,
+                help="Quantas pessoas executam esse processo atualmente?"
+            )
+        
+        with col2:
+            days_per_month = st.number_input(
+                "Dias trabalhados no mês *",
+                value=int(getattr(selected_calc, 'days_per_month', 22)),
+                min_value=1,
+                max_value=31,
+                step=1,
+                help="Quantos dias por mês o processo é executado?"
+            )
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            monthly_salary = st.number_input(
+                "Custo médio por funcionário (R$) *",
+                value=float(getattr(selected_calc, 'monthly_salary', selected_calc.hourly_rate * days_per_month * 8)),
+                min_value=1000.0,
+                max_value=100000.0,
+                step=100.0,
+                help="Salário + encargos + benefícios (mensal)"
+            )
+        
+        with col2:
+            minutes_per_day = st.number_input(
+                "Tempo gasto por dia (minutos) *",
+                value=int(getattr(selected_calc, 'minutes_per_day', (selected_calc.current_time_per_month / days_per_month) * 60 if days_per_month > 0 else 60)),
+                min_value=5,
+                max_value=480,
+                step=5,
+                help="Quantos minutos cada funcionário dedica ao processo? (ex: 480 = 8 horas)"
+            )
+            hours_per_day = minutes_per_day / 60
+        
+        # Recalcular valores derivados
+        working_hours_per_month = days_per_month * 8
+        hourly_rate = monthly_salary / working_hours_per_month
+        current_time_per_month = hours_per_day * days_per_month
         
         # Características do Processo
         st.markdown("### 🔧 Características do Processo")
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            people = st.number_input(
-                "Pessoas Envolvidas",
-                value=int(selected_calc.people_involved),
-                min_value=1,
-                step=1,
-                help="Quantas pessoas executam o processo (mesmo campo da criação)"
-            )
-        
-        with col2:
-            current_time = st.number_input(
-                "Tempo gasto por mês (horas)",
-                value=float(selected_calc.current_time_per_month),
-                min_value=0.0,
-                step=0.5,
-                help="Horas/mês do processo (equivale a dias × horas/dia da criação)"
-            )
-        
-        with col3:
-            hourly_rate = st.number_input(
-                "Taxa Horária (R$)",
-                value=float(selected_calc.hourly_rate),
-                min_value=0.0,
-                step=1.0,
-                format="%.2f",
-                help="Custo/hora atual (derivado do salário na criação)"
-            )
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            # Normalize complexity value to handle both 'Media' and 'Média'
             complexity_options = ["Baixa", "Média", "Alta"]
             current_complexity = getattr(selected_calc, 'complexity', 'Média')
-            # Handle 'Media' (no accent) from database
             if current_complexity == 'Media':
                 current_complexity = 'Média'
             
             complexity = st.selectbox(
-                "Complexidade",
-                complexity_options,
-                index=complexity_options.index(current_complexity) if current_complexity in complexity_options else 1
+                "Complexidade da Automação *",
+                options=complexity_options,
+                index=complexity_options.index(current_complexity) if current_complexity in complexity_options else 1,
+                help="Avalie a complexidade técnica do processo"
             )
         
         with col2:
             systems_quantity = st.number_input(
-                "Quantidade de Sistemas",
-                value=int(getattr(selected_calc, 'systems_quantity', 1)),
+                "Quantidade de sistemas *",
+                value=int(getattr(selected_calc, 'systems_quantity', 2)),
                 min_value=1,
-                step=1
+                max_value=50,
+                step=1,
+                help="Quantos sistemas estão envolvidos neste processo?"
             )
         
         with col3:
             daily_transactions = st.number_input(
-                "Volume de Transações/Dia",
+                "Volume de transações por dia *",
                 value=int(getattr(selected_calc, 'daily_transactions', 100)),
                 min_value=1,
-                step=10
+                max_value=10000,
+                step=10,
+                help="Quantas transações/tarefas são processadas diariamente?"
             )
         
         col1, col2, col3 = st.columns(3)
-
         with col1:
             error_rate = st.number_input(
-                "Taxa de Erro (%)",
-                value=float(getattr(selected_calc, 'error_rate', 0)),
+                "Taxa de erro atual (%)",
+                value=float(getattr(selected_calc, 'error_rate', 5.0)),
                 min_value=0.0,
                 max_value=100.0,
-                step=1.0
+                step=1.0,
+                help="Qual a porcentagem de erros no processo manual?"
             )
 
         with col2:
@@ -255,82 +280,103 @@ def edit_process_modal():
         with col3:
             exception_rate = st.number_input(
                 "% de Revisão Manual NOS AUTOMATIZADOS",
-                value=float(getattr(selected_calc, 'exception_rate', 0)),
+                value=float(getattr(selected_calc, 'exception_rate', 10.0)),
                 min_value=0.0,
                 max_value=100.0,
                 step=1.0,
                 help=f"Dos {expected_automation_percentage:.0f}% automatizados, qual % ainda precisa de revisão/validação manual?"
             )
-
         
         # Custos de Implementação
         st.markdown("### 💰 Custos de Implementação")
-        col1, col2 = st.columns(2)
+        st.markdown("#### Custos de Desenvolvimento")
         
+        col1, col2 = st.columns(2)
         with col1:
-            impl_cost = st.number_input(
-                "Custo de Implementação (R$)",
-                value=float(selected_calc.rpa_implementation_cost),
-                min_value=0.0,
-                step=100.0,
-                format="%.2f"
+            dev_hours = st.number_input(
+                "Horas de desenvolvimento estimada *",
+                value=float(getattr(selected_calc, 'dev_hours', 160.0)),
+                min_value=1.0,
+                max_value=10000.0,
+                step=1.0,
+                help="Horas totais estimadas para desenvolvimento e implantação"
             )
         
         with col2:
-            maintenance_percentage = st.number_input(
-                "Manutenção Anual (% do desenvolvimento)",
-                value=float(getattr(selected_calc, 'maintenance_percentage', 10)),
-                min_value=0.0,
-                max_value=100.0,
-                step=1.0
-            )
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            infra_license_cost = st.number_input(
-                "Custo com Infra/Licenças (R$ mensal)",
-                value=float(getattr(selected_calc, 'infra_license_cost', 0)),
-                min_value=0.0,
+            dev_hourly_rate = st.number_input(
+                "Valor hora médio desenvolvimento (R$) *",
+                value=float(getattr(selected_calc, 'dev_hourly_rate', 150.0)),
+                min_value=10.0,
+                max_value=500.0,
                 step=10.0,
-                format="%.2f"
+                help="Valor médio hora de desenvolvimento"
+            )
+        
+        dev_total_cost = dev_hours * dev_hourly_rate
+        
+        st.markdown("#### Custos Operacionais")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            maintenance_percentage = st.number_input(
+                "Percentual anual de manutenção (% do desenvolvimento)",
+                value=float(getattr(selected_calc, 'maintenance_percentage', 10)),
+                min_value=0,
+                max_value=100,
+                step=1,
+                help="Percentual ANUAL do custo de desenvolvimento destinado à manutenção. Será convertido para custo mensal automaticamente (ex: 12% anual => 1% ao mês)."
+            )
+            monthly_cost = (dev_total_cost * maintenance_percentage) / 100 / 12
+        
+        with col2:
+            infra_license_cost = st.number_input(
+                "Custo com infra, licenças e outros (R$) - Mensal",
+                value=float(getattr(selected_calc, 'infra_license_cost', 500.0)),
+                min_value=0.0,
+                max_value=100000.0,
+                step=100.0,
+                help="Custos mensais com infraestrutura, licenças de software, etc"
+            )
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            other_costs = st.number_input(
+                "Outros custos (R$) - Uma vez",
+                value=float(getattr(selected_calc, 'other_costs', 0.0)),
+                min_value=0.0,
+                max_value=100000.0,
+                step=100.0,
+                help="Outros custos únicos de implementação"
             )
         
         with col2:
-            other_costs = st.number_input(
-                "Outros Custos (R$ - uma vez)",
-                value=float(getattr(selected_calc, 'other_costs', 0)),
-                min_value=0.0,
-                step=100.0,
-                format="%.2f"
-            )
+            st.empty()
         
-        # Na criação, a manutenção é calculada sobre o custo de desenvolvimento (impl_cost = dev_total_cost + other_costs).
-        # Para manter consistência, removemos other_costs da base antes de aplicar o percentual anual.
-        dev_cost_base = max(impl_cost - other_costs, 0.0)
-        monthly_cost = (dev_cost_base * maintenance_percentage) / 100 / 12
-        monthly_rpa_cost = monthly_cost + infra_license_cost
+        impl_cost = dev_total_cost + other_costs
+        total_monthly_cost = monthly_cost + infra_license_cost
         
         # Benefícios Adicionais
-        st.markdown("### 🎁 Benefícios Adicionais")
+        st.markdown("### 🎁 Outros Benefícios")
         col1, col2 = st.columns(2)
         
         with col1:
             fines_avoided = st.number_input(
-                "Multas Evitadas (R$ mensal)",
-                value=float(getattr(selected_calc, 'fines_avoided', 0)),
+                "Multas Evitadas (R$) - Mensal",
+                value=float(getattr(selected_calc, 'fines_avoided', 0.0)),
                 min_value=0.0,
+                max_value=1000000.0,
                 step=100.0,
-                format="%.2f"
+                help="Multas que serão evitadas com a automação (valor mensal)"
             )
         
         with col2:
             sql_savings = st.number_input(
-                "SLA Reduzida (R$ mensal)",
-                value=float(getattr(selected_calc, 'sql_savings', 0)),
+                "SLA Reduzida (R$) - Mensal",
+                value=float(getattr(selected_calc, 'sql_savings', 0.0)),
                 min_value=0.0,
+                max_value=1000000.0,
                 step=100.0,
-                format="%.2f"
+                help="Economia com melhoria de SLA (valor mensal)"
             )
         
         st.divider()
@@ -343,11 +389,11 @@ def edit_process_modal():
                 # Create ROI input for base calculation
                 roi_input = ROIInput(
                     process_name=process_name,
-                    current_time_per_month=float(current_time),
-                    people_involved=int(people),
+                    current_time_per_month=float(current_time_per_month),
+                    people_involved=int(people_involved),
                     hourly_rate=float(hourly_rate),
                     rpa_implementation_cost=float(impl_cost),
-                    rpa_monthly_cost=float(monthly_rpa_cost),
+                    rpa_monthly_cost=float(total_monthly_cost),
                     expected_automation_percentage=float(expected_automation_percentage),
                     exception_rate=float(exception_rate),
                 )
@@ -369,14 +415,21 @@ def edit_process_modal():
                     "department": department,
                     
                     # Process Characteristics
-                    "people_involved": int(people),
-                    "current_time_per_month": float(current_time),
+                    "people_involved": int(people_involved),
+                    "current_time_per_month": float(current_time_per_month),
                     "hourly_rate": float(hourly_rate),
                     "complexity": complexity,
                     "systems_quantity": int(systems_quantity),
                     "daily_transactions": int(daily_transactions),
                     "error_rate": float(error_rate),
                     "exception_rate": float(exception_rate),
+                    
+                    # Input fields for edit form (to match add form exactly)
+                    "days_per_month": int(days_per_month),
+                    "monthly_salary": float(monthly_salary),
+                    "minutes_per_day": int(minutes_per_day),
+                    "dev_hours": float(dev_hours),
+                    "dev_hourly_rate": float(dev_hourly_rate),
                     
                     # Automation Settings
                     "expected_automation_percentage": float(expected_automation_percentage),
@@ -386,7 +439,7 @@ def edit_process_modal():
                     "maintenance_percentage": float(maintenance_percentage),
                     "infra_license_cost": float(infra_license_cost),
                     "other_costs": float(other_costs),
-                    "rpa_monthly_cost": float(monthly_rpa_cost),
+                    "rpa_monthly_cost": float(total_monthly_cost),
                     
                     # Additional Benefits
                     "fines_avoided": float(fines_avoided),
