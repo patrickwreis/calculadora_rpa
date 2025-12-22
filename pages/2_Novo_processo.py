@@ -380,24 +380,20 @@ with st.form("roi_form"):
                 "maintenance_percentage": maintenance_percentage,
             }
             
-            st.session_state.show_results = True
+            st.session_state.show_results_dialog = True
             st.rerun()
 
-# Display results if calculated
-if st.session_state.show_results and st.session_state.calculator_results:
-    st.divider()
-    st.success("✓ Análise de ROI Concluída")
-    
+# Dialog com resultados
+@st.dialog("📊 Resultados da Análise de ROI", width="large")
+def show_results_dialog():
     result = st.session_state.calculator_results["result"]
     roi_input = st.session_state.calculator_results["input"]
     extended_metrics = st.session_state.calculator_results["extended_metrics"]
     
-    # Results Dashboard
-    st.divider()
-    st.subheader(f"📊 Resultados - {roi_input.process_name}")
+    st.success(f"✓ Análise concluída para: **{roi_input.process_name}**")
     
     # KPIs Section
-    st.subheader("💰 Economia (1, 2 e 5 anos)")
+    st.markdown("### 💰 Economia (1, 2 e 5 anos)")
     eco_col1, eco_col2, eco_col3 = st.columns(3)
     with eco_col1:
         st.metric("1 Ano", format_currency(extended_metrics["economia_1year"]))
@@ -406,7 +402,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
     with eco_col3:
         st.metric("5 Anos", format_currency(extended_metrics["economia_5years"]))
     
-    st.subheader("📈 ROI (1, 2 e 5 anos)")
+    st.markdown("### 📈 ROI (1, 2 e 5 anos)")
     roi_col1, roi_col2, roi_col3 = st.columns(3)
     with roi_col1:
         st.metric("1 Ano", f"{extended_metrics['roi_1year_percentage']:.1f}%")
@@ -415,7 +411,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
     with roi_col3:
         st.metric("5 Anos", f"{extended_metrics['roi_5years_percentage']:.1f}%")
     
-    st.subheader("⏱️ Payback e Economia Mensal")
+    st.markdown("### ⏱️ Payback e Economia Mensal")
     payback_col1, payback_col2, payback_col3 = st.columns(3)
     with payback_col1:
         st.metric("Payback", f"{extended_metrics['payback_period_months']:.1f}m")
@@ -431,7 +427,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("💳 Análise Financeira")
+        st.markdown("#### 💳 Análise Financeira")
         
         current_monthly_cost = (
             roi_input.current_time_per_month * 
@@ -469,7 +465,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
             st.write(f"**{label}:** {value}")
     
     with col2:
-        st.subheader("📊 Indicadores de ROI")
+        st.markdown("#### 📊 Indicadores de ROI")
         
         # Recalculate payback with additional benefits
         total_monthly_savings = result.monthly_savings + fines_avoided + sql_savings
@@ -496,7 +492,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
     st.divider()
     
     # Process Details
-    st.subheader("🔧 Detalhes do Processo")
+    st.markdown("#### 🔧 Detalhes do Processo")
     
     col1, col2, col3 = st.columns(3)
     
@@ -542,7 +538,6 @@ if st.session_state.show_results and st.session_state.calculator_results:
     
     # Save to database
     st.divider()
-    st.write("💾 **Salvar este cálculo na base de dados**")
     
     col1, col2 = st.columns([1, 1])
     
@@ -598,7 +593,7 @@ if st.session_state.show_results and st.session_state.calculator_results:
                         st.success("✅ Cálculo salvo com sucesso!")
                         
                         # Clear calculator results and cache
-                        st.session_state.show_results = False
+                        st.session_state.show_results_dialog = False
                         st.session_state.calculator_results = None
                         db_manager.clear_cache()
                         
@@ -611,7 +606,11 @@ if st.session_state.show_results and st.session_state.calculator_results:
                     st.error(f"❌ Erro ao salvar: {str(e)}")
     
     with col2:
-        if st.button("Novo Cálculo", width="content"):
-            st.session_state.show_results = False
+        if st.button("🔄 Novo Cálculo", use_container_width=True):
+            st.session_state.show_results_dialog = False
             st.session_state.calculator_results = None
             st.rerun()
+
+# Trigger para abrir o dialog
+if st.session_state.get("show_results_dialog", False) and st.session_state.get("calculator_results"):
+    show_results_dialog()
