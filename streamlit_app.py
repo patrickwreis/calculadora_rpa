@@ -51,7 +51,7 @@ with col3:
     if "auth_user" in st.session_state and st.session_state.auth_user is not None:
         if st.button("🚪", key="header_logout_btn", use_container_width=True, type="secondary", help="Sair"):
             for key in list(st.session_state.keys()):
-                if key.startswith("auth_") or key.startswith("show_"):
+                if isinstance(key, str) and (key.startswith("auth_") or key.startswith("show_")):
                     del st.session_state[key]
             st.rerun()
 
