@@ -120,7 +120,7 @@ with col6:
         help="Total investido em RPA"
     )
 
-# Destaques (seleção atual)
+# Destaques
 st.markdown("#### 🏅 Destaques")
 best_roi_calc = max(calculations, key=lambda c: c.roi_percentage_first_year)
 best_payback_calc = min(calculations, key=lambda c: c.payback_period_months)

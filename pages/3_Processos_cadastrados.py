@@ -70,7 +70,7 @@ st.markdown("### 🎯 Selecione um Processo")
 selected_process_id = st.selectbox(
     "Escolha um processo para visualizar e editar:",
     [calc.id for calc in calculations],
-    format_func=lambda x: f"ID {x} - {next(c.process_name for c in calculations if c.id == x)}",
+    format_func=lambda x: f"{next(c.process_name for c in calculations if c.id == x)}",
     key="main_selectbox"
 )
 
