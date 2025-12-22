@@ -172,3 +172,28 @@ class SessionManager:
                 "is_admin": st.session_state.get("auth_is_admin", False)
             }
         return None
+    
+    @staticmethod
+    def ensure_auth(redirect_page: str = "streamlit_app.py") -> bool:
+        """Garante que a sessão está autenticada, redirecionando se necessário.
+        
+        Esta função DEVE ser chamada no início de cada página que requer autenticação,
+        ANTES de qualquer outra lógica.
+        
+        Args:
+            redirect_page: Página para redirecionar se não autenticado
+            
+        Returns:
+            True se autenticado, False se redirecionou
+        """
+        # Primeira tentativa: checar session_state
+        if "auth_user" in st.session_state and st.session_state.auth_user:
+            return True
+        
+        # Segunda tentativa: restaurar da sessão persistente
+        if SessionManager.restore_session():
+            return True
+        
+        # Sem autenticação, redirecionar
+        st.switch_page(redirect_page)
+        return False

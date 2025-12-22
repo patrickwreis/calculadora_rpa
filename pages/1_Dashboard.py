@@ -7,6 +7,7 @@ from src.database import DatabaseManager
 from src.ui.auth import require_auth
 from src.ui.auth_components import render_logout_button
 from src.ui import EmptyStateManager
+from src.security import SessionManager
 from src.calculator.utils import format_currency, calculate_automation_metrics
 from src.services import (
     MetricsCalculator,
@@ -23,9 +24,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Auth gate
-if "auth_user" not in st.session_state or st.session_state.auth_user is None:
-    st.switch_page("streamlit_app.py")
+# Auth gate - ensure session is restored before any checks
+SessionManager.ensure_auth(redirect_page="streamlit_app.py")
 
 if not require_auth(form_key="dashboard_login"):
     st.stop()

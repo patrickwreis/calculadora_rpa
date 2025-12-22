@@ -13,10 +13,10 @@ from src.export import ExportManager
 from src.ui import EmptyStateManager
 from src.ui.auth import require_auth
 from src.ui.auth_components import render_logout_button
+from src.security import SessionManager
 
-# Auth gate - redirect to home if not authenticated
-if "auth_user" not in st.session_state or st.session_state.auth_user is None:
-    st.switch_page("streamlit_app.py")
+# Auth gate - ensure session is restored before any checks
+SessionManager.ensure_auth(redirect_page="streamlit_app.py")
 
 # Auth gate
 if not require_auth(form_key="relatorios_login"):
