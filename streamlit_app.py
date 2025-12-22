@@ -21,8 +21,8 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# Restaurar sessão após refresh (deve ser feito NO INÍCIO antes de qualquer renderização)
-SessionManager.restore_session()
+# Nota: Streamlit persiste session_state automaticamente entre refreshes.
+# Não precisamos fazer nada especial, apenas usar save_session() ao fazer login.
 
 # Hide page navigation if not logged in
 if "auth_user" not in st.session_state or st.session_state.auth_user is None:
