@@ -11,6 +11,7 @@ from src.ui.auth_components import (
     validate_email, validate_password, show_password_strength,
     sanitize_input, show_auth_success_message, show_register_success_message
 )
+from src.security import SessionManager
 
 # Page configuration
 st.set_page_config(
@@ -19,6 +20,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="auto"
 )
+
+# Injetar JavaScript para persistência de sessão
+SessionManager.inject_localStorage_js()
 
 # Hide page navigation if not logged in
 if "auth_user" not in st.session_state or st.session_state.auth_user is None:
@@ -50,9 +54,7 @@ with col2:
 with col3:
     if "auth_user" in st.session_state and st.session_state.auth_user is not None:
         if st.button("🚪", key="header_logout_btn", width='stretch', type="secondary", help="Sair"):
-            for key in list(st.session_state.keys()):
-                if isinstance(key, str) and (key.startswith("auth_") or key.startswith("show_")):
-                    del st.session_state[key]
+            SessionManager.clear_session()
             st.rerun()
 
 st.markdown("Calcule o retorno real de suas automações RPA")
@@ -100,10 +102,13 @@ if st.session_state.get("show_auth_modal", False):
                             user = db.get_user_by_email(login_email)
                             
                             if user and verify_password(login_password, user.password_hash):
-                                st.session_state.auth_user = user.username
-                                st.session_state.auth_user_id = user.id
-                                st.session_state.auth_user_email = user.email
-                                st.session_state.auth_is_admin = user.is_admin
+                                # Salvar sessão persistentemente
+                                SessionManager.save_session(
+                                    user_id=user.id,
+                                    username=user.username,
+                                    email=user.email,
+                                    is_admin=user.is_admin
+                                )
                                 st.session_state.show_auth_modal = False
                                 show_auth_success_message(user.email)
                                 st.rerun()

@@ -17,7 +17,7 @@ import streamlit as st
 import bcrypt
 
 from src.database import DatabaseManager
-from src.security import get_login_limiter, get_password_reset_limiter
+from src.security import get_login_limiter, get_password_reset_limiter, SessionManager
 
 
 def _truncate_for_bcrypt(password: str) -> str:
@@ -193,11 +193,14 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
                 elif not verify_password(login_password, user.password_hash):
                     st.error("❌ Credenciais inválidas")
                 else:
-                    # Login successful - reset rate limiter
+                    # Login successful - reset rate limiter and save session persistently
                     login_limiter.reset(login_username)
-                    st.session_state.auth_user = login_username
-                    st.session_state.auth_user_id = user.id
-                    st.session_state.auth_is_admin = user.is_admin
+                    SessionManager.save_session(
+                        user_id=user.id,
+                        username=user.username,
+                        email=user.email,
+                        is_admin=user.is_admin
+                    )
                     st.success("✅ Login realizado com sucesso!")
                     st.rerun()
     

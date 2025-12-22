@@ -3,6 +3,7 @@
 import streamlit as st
 import re
 from typing import Optional
+from src.security import SessionManager
 
 
 def render_logout_button(page_key: str) -> None:
@@ -27,9 +28,7 @@ def render_logout_button(page_key: str) -> None:
         with col3:
             if st.button("🚪 Sair", key=f"{page_key}_logout", width='stretch', type="secondary"):
                 # Limpar toda sessão de autenticação
-                for key in list(st.session_state.keys()):
-                    if key.startswith("auth_"):
-                        del st.session_state[key]
+                SessionManager.clear_session()
                 st.success("👋 Logout realizado com sucesso!")
                 st.switch_page("streamlit_app.py")
 
