@@ -189,15 +189,6 @@ def create_summary_report(calculations):
     
     st.subheader("Detalhes dos Processos")
     st.dataframe(df, width='stretch', hide_index=True)
-    
-    # Export button
-    csv = df.to_csv(index=False, encoding='utf-8-sig')
-    st.download_button(
-        label="📥 Baixar Relatório (CSV)",
-        data=csv,
-        file_name=f"relatorio_processos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-        mime="text/csv"
-    )
 
 
 def create_department_report(calculations):
