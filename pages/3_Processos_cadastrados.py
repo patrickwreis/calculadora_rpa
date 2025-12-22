@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Process Management - Simplified Single Page"""
 from datetime import datetime
+from typing import cast
 
 import pandas as pd
 import streamlit as st
@@ -75,15 +76,15 @@ selected_process_id = st.selectbox(
 )
 
 selected_calc = next(c for c in calculations if c.id == selected_process_id)
-selected_id = selected_calc.id
+selected_id_raw = selected_calc.id
 
-# Validação de segurança (type narrowing para Pylance)
-if selected_id is None:
+# Validação de segurança
+if selected_id_raw is None:
     st.error("Erro: ID do processo inválido")
     st.stop()
 
-# Type narrowing: após st.stop(), selected_id é garantidamente int
-assert selected_id is not None
+# Type narrowing: após validação, garantimos que é int
+selected_id: int = cast(int, selected_id_raw)
 
 st.divider()
 
