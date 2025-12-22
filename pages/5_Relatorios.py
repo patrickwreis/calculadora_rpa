@@ -85,7 +85,7 @@ def create_export_section(calculations):
         with st.spinner("⏳ Gerando PDF..."):
             success, pdf_buffer, error_msg = ExportManager.export_to_pdf(calc_dicts)
         
-        if success:
+        if success and pdf_buffer is not None:
             st.download_button(
                 label="📄 Baixar PDF",
                 data=pdf_buffer,
@@ -101,7 +101,7 @@ def create_export_section(calculations):
         with st.spinner("⏳ Gerando Excel..."):
             success, excel_buffer, error_msg = ExportManager.export_to_excel(calc_dicts)
         
-        if success:
+        if success and excel_buffer is not None:
             st.download_button(
                 label="📊 Baixar Excel",
                 data=excel_buffer,
