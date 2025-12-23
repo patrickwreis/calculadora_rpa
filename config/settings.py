@@ -14,7 +14,7 @@ LOGS_DIR.mkdir(exist_ok=True)
 
 # App settings
 APP_NAME = "ROI RPA Calculator"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 APP_DESCRIPTION = "Professional tool for analyzing ROI of RPA automations"
 
 
