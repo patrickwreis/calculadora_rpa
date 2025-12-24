@@ -21,6 +21,10 @@ APP_DESCRIPTION = "Professional tool for analyzing ROI of RPA automations"
 # Database
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/calculator.db")
 
+# Supabase
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
 # Page Config
 PAGE_LAYOUT = "wide"
 INITIAL_SIDEBAR_STATE = "collapsed"
