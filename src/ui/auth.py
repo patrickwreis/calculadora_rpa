@@ -17,6 +17,7 @@ import streamlit as st
 import bcrypt
 
 from src.database import DatabaseManager
+from src.services import SupabaseService
 from src.security import get_login_limiter, get_password_reset_limiter, SessionManager
 
 
@@ -262,23 +263,43 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
                 elif user.email != recovery_email:
                     st.error("❌ Email não corresponde ao usuário")
                 else:
-                    import random
-                    import string
-                    temp_pass = "".join(random.choices(string.ascii_letters + string.digits, k=8))
-                    db.update_user_password(recovery_user, hash_password(temp_pass))
-                    
-                    # Tentar enviar email
-                    email_sent = send_password_reset_email(user.email, recovery_user, temp_pass)
-                    
-                    if email_sent:
-                        st.success("✅ Email enviado com sucesso!")
-                        st.info("📧 Verifique seu email para a senha temporária.")
+                    # If configured, use Supabase Auth to trigger reset email
+                    use_supabase = os.getenv("USE_SUPABASE_AUTH", "false").lower() == "true"
+                    if use_supabase:
+                        sup = SupabaseService()
+                        res = sup.send_password_reset(recovery_email)
+                        if res.get("ok"):
+                            st.success("✅ Pedido de recuperação enviado via Supabase. Verifique o email.")
+                        else:
+                            st.error(f"❌ Falha ao solicitar recuperação via Supabase: {res.get('error')}")
+                            st.info("Vou gerar uma senha temporária localmente como fallback.")
+                            import random
+                            import string
+                            temp_pass = "".join(random.choices(string.ascii_letters + string.digits, k=8))
+                            db.update_user_password(recovery_user, hash_password(temp_pass))
+                            email_sent = send_password_reset_email(user.email, recovery_user, temp_pass)
+                            if email_sent:
+                                st.success("✅ Email SMTP enviado com a senha temporária.")
+                            else:
+                                st.success("✅ Senha temporária gerada!")
+                                st.code(temp_pass, language="text")
+                                st.info("Email não foi enviado, mas a senha foi alterada. Use a senha acima.")
                     else:
-                        st.success("✅ Senha temporária gerada!")
-                        st.code(temp_pass, language="text")
-                        st.info("Email não foi enviado, mas a senha foi alterada. Use a senha acima.")
-                    
-                    st.warning("⚠️ **Importante:**\n- Faça login com a senha temporária\n- Altere para uma senha segura após entrar")
+                        import random
+                        import string
+                        temp_pass = "".join(random.choices(string.ascii_letters + string.digits, k=8))
+                        db.update_user_password(recovery_user, hash_password(temp_pass))
+                        # Tentar enviar email
+                        email_sent = send_password_reset_email(user.email, recovery_user, temp_pass)
+                        if email_sent:
+                            st.success("✅ Email enviado com sucesso!")
+                            st.info("📧 Verifique seu email para a senha temporária.")
+                        else:
+                            st.success("✅ Senha temporária gerada!")
+                            st.code(temp_pass, language="text")
+                            st.info("Email não foi enviado, mas a senha foi alterada. Use a senha acima.")
+
+                    st.warning("⚠️ **Importante:**\n- Faça login com a senha temporária (se aplicada)\n- Altere para uma senha segura após entrar")
     
     st.divider()
     st.markdown("""

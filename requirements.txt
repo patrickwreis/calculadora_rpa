@@ -16,3 +16,4 @@ streamlit-aggrid==1.2.1
 streamlit-extras
 st-annotated-text
 supabase
+requests
