@@ -66,7 +66,7 @@ st.divider()
 if st.session_state.get("show_auth_modal", False):
     @st.dialog("🔐 Autenticação", width="large")
     def auth_dialog():
-        tab1, tab2, tab3 = st.tabs(["🔑 Login", "📝 Cadastrar", "🔄 Esqueci a Senha"])
+        tab1, tab2 = st.tabs(["🔑 Login", "📝 Cadastrar"])
         
         with tab1:
             st.markdown("### Acesso à Conta")
@@ -196,57 +196,6 @@ if st.session_state.get("show_auth_modal", False):
             
             with col3:
                 if st.button("❌ Cancelar", key="modal_reg_cancel", width='stretch'):
-                    st.session_state.show_auth_modal = False
-                    st.rerun()
-        
-        with tab3:
-            st.markdown("### Recuperar Senha")
-            st.info("💡 Digite seu email para receber instruções de recuperação de senha.")
-            
-            recovery_email = st.text_input(
-                "Email cadastrado", 
-                key="modal_recovery_email",
-                placeholder="seu.email@exemplo.com"
-            )
-            
-            st.divider()
-            
-            col1, col2, col3 = st.columns([1, 1, 1])
-            with col1:
-                if st.button("📧 Enviar", key="modal_recovery_btn", width='stretch', type="primary"):
-                    recovery_email = sanitize_input(recovery_email)
-                    is_valid, error_msg = validate_email(recovery_email)
-                    
-                    if not is_valid:
-                        st.error(f"❌ {error_msg}")
-                    else:
-                        db = get_database_manager()
-                        user = db.get_user_by_email(recovery_email)
-                        
-                        if user:
-                            # Gerar senha temporária
-                            import secrets
-                            import string
-                            temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
-                            
-                            # Atualizar no banco
-                            hashed = hash_password(temp_password)
-                            db.update_user_password(user.username, hashed)
-                            
-                            # Tentar enviar email
-                            from src.ui.auth import send_password_reset_email
-                            if send_password_reset_email(recovery_email, user.username, temp_password):
-                                st.success("✅ Email enviado! Verifique sua caixa de entrada.")
-                            else:
-                                st.warning(f"⚠️ Não foi possível enviar o email.")
-                                st.info(f"🔑 Use esta senha temporária: **{temp_password}**")
-                                st.caption("Anote esta senha e faça login para alterá-la.")
-                        else:
-                            # Por segurança, não revelar se o email existe ou não
-                            st.info("📧 Se o email estiver cadastrado, você receberá instruções em breve.")
-            
-            with col3:
-                if st.button("❌ Cancelar", key="modal_recovery_cancel", width='stretch'):
                     st.session_state.show_auth_modal = False
                     st.rerun()
     
