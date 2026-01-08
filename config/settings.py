@@ -2,9 +2,13 @@
 """Application settings and configuration"""
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+BASE_DIR = Path(__file__).parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 # Paths
-BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
 LOGS_DIR = BASE_DIR / "logs"
 
@@ -20,10 +24,6 @@ APP_DESCRIPTION = "Professional tool for analyzing ROI of RPA automations"
 
 # Database
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/calculator.db")
-
-# Supabase
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 # Page Config
 PAGE_LAYOUT = "wide"

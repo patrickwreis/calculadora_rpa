@@ -40,34 +40,37 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-4. Configure as credenciais de administrador
-```bash
-# Gere credenciais seguras
-python scripts/generate_credentials.py
+4. Configure o banco de dados Neon
 
+```bash
 # Copie o arquivo de exemplo
 cp .env.example .env
 
-# Edite .env com as credenciais geradas
-# Adicione também as credenciais de email (opcional)
+# Edite .env e adicione sua connection string do Neon
+# Obtenha em: https://console.neon.tech
+# Formato: postgresql://user:password@host.neon.tech:5432/database?sslmode=require&channel_binding=require
 ```
 
-5. Execute a aplicação
+5. Crie as tabelas no banco de dados
+
+```bash
+python create_tables.py
+```
+
+6. Execute a aplicação
 ```bash
 streamlit run streamlit_app.py
 ```
 
 A aplicação estará disponível em `http://localhost:8501`
 
-### Verificar persistência no banco de dados
+### Verificar conexão com banco de dados
 
-Há um pequeno script para testar a persistência de um cálculo no banco SQLite:
+Para verificar se sua conexão com Neon está funcionando:
 
 ```bash
-python scripts/verify_db.py
+python -c "from sqlalchemy import create_engine, text; from config.settings import DATABASE_URL; engine = create_engine(DATABASE_URL); conn = engine.connect(); print('✓ Conexão com Neon bem-sucedida!')"
 ```
-
-O script salva um cálculo de teste e imprime os últimos registros.
 
 ## 📁 Estrutura do Projeto
 
