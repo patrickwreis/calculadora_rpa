@@ -32,21 +32,23 @@ if not require_auth(form_key="dashboard_login"):
 
 render_logout_button("dashboard")
 
+# Workspace selector in sidebar
+from src.ui.workspace_selector import ensure_workspace_selected, render_workspace_selector
+with st.sidebar:
+    st.markdown("---")
+    render_workspace_selector()
+    st.markdown("---")
+
+workspace_id = ensure_workspace_selected()
+
 # ========== DATA LOADING ==========
 user_context = PageService.get_user_context()
 current_user_id = user_context["current_user_id"]
 is_admin = user_context["is_admin"]
-user_filter = user_context["user_filter"]
 
 with st.spinner("⏳ Carregando dados do dashboard..."):
     db_manager = DatabaseManager()
-    success, calculations, error_msg = db_manager.get_all_calculations(
-        user_id=user_filter, use_cache=True
-    )
-
-if not success:
-    EmptyStateManager.show_error_message(f"Erro ao carregar dashboard: {error_msg}")
-    st.stop()
+    calculations = db_manager.get_workspace_calculations(workspace_id)
 
 if not calculations:
     EmptyStateManager.show_no_processes_empty_state()
@@ -54,10 +56,7 @@ if not calculations:
 
 # ========== HEADER ==========
 st.title("📊 Dashboard Executivo")
-if is_admin and user_filter is None:
-    st.markdown("Visão geral de **todos os processos RPA** (Admin)")
-else:
-    st.markdown("Visão geral dos **seus processos RPA**")
+st.markdown("Visão geral dos **seus processos RPA** neste espaço de trabalho")
 st.divider()
 
 # ========== KEY METRICS - ALWAYS VISIBLE ==========

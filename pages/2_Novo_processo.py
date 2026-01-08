@@ -32,6 +32,15 @@ if not require_auth(form_key="novo_processo_login"):
 # Header com logout
 render_logout_button("novo_processo")
 
+# Workspace selector in sidebar
+from src.ui.workspace_selector import ensure_workspace_selected, render_workspace_selector
+with st.sidebar:
+    st.markdown("---")
+    render_workspace_selector()
+    st.markdown("---")
+
+workspace_id = ensure_workspace_selected()
+
 # Initialize session state
 if "calculator_results" not in st.session_state:
     st.session_state.calculator_results = None
@@ -597,6 +606,10 @@ def show_results_dialog():
                     "payback_period_months": roi_input.rpa_implementation_cost / total_monthly_savings if total_monthly_savings > 0 else 0,
                     "roi_first_year": (total_monthly_savings * 12 - roi_input.rpa_implementation_cost),
                     "roi_percentage_first_year": ((total_monthly_savings * 12 - roi_input.rpa_implementation_cost) / roi_input.rpa_implementation_cost * 100),
+                    
+                    # Workspace and audit
+                    "workspace_id": workspace_id,
+                    "created_by_user_id": st.session_state.auth_user_id,
                     }
                     
                     success, saved_calc, error_msg = db_manager.save_calculation(calculation_data)

@@ -34,6 +34,15 @@ if not require_auth(form_key="processos_login"):
 # Header com logout
 render_logout_button("processos")
 
+# Workspace selector in sidebar
+from src.ui.workspace_selector import ensure_workspace_selected, render_workspace_selector
+with st.sidebar:
+    st.markdown("---")
+    render_workspace_selector()
+    st.markdown("---")
+
+workspace_id = ensure_workspace_selected()
+
 # Initialize database and calculator
 db_manager = DatabaseManager()
 calculator = ROICalculator()
@@ -43,26 +52,13 @@ page_header("Histórico de Processos", "Visualize, edite e gerencie todos os seu
 
 # Get current user
 current_user_id = st.session_state.get("auth_user_id", 1)
-is_admin = st.session_state.get("auth_is_admin", False)
 
-# Admin pode escolher ver todos ou apenas seus processos
-if is_admin:
-    col1, col2 = st.columns([3, 1])
-    with col2:
-        show_all = st.checkbox("🌐 Ver todos os processos", value=True, key="admin_show_all")
-    user_filter = None if show_all else current_user_id
-else:
-    user_filter = current_user_id
-
-# Get calculations with loading indicator
+# Get calculations from workspace with loading indicator
 with st.spinner("⏳ Carregando processos..."):
-    success, calculations, error_msg = db_manager.get_all_calculations(user_id=user_filter, use_cache=True)
-    if not success:
-        st.error(f"Erro ao carregar processos: {error_msg}")
-        st.stop()
+    calculations = db_manager.get_workspace_calculations(workspace_id)
 
 if not calculations:
-    st.info("📋 Nenhum processo salvo ainda. Comece criando um novo cálculo!")
+    st.info("📋 Nenhum processo salvo ainda neste espaço. Comece criando um novo cálculo!")
     st.stop()
 
 # ========== SELECTION SECTION ==========

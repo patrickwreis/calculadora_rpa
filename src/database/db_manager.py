@@ -2,7 +2,7 @@
 """Database management"""
 from sqlalchemy import create_engine, text
 from sqlmodel import Session, select
-from typing import List, Optional, TYPE_CHECKING, Tuple, Any
+from typing import List, Optional, Tuple, Any
 from datetime import datetime
 from config import DATABASE_URL
 import functools
@@ -10,12 +10,12 @@ import time
 import logging
 import streamlit as st
 
+# Import models at module level to avoid redefinition warnings
+from src.models import Calculation, User, Workspace, WorkspaceMember, classify_process
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    from src.models import Calculation, User
 
 
 class DatabaseError(Exception):
@@ -77,11 +77,8 @@ class DatabaseManager:
     
     def _create_tables(self):
         """Create database tables"""
-        # Import here to ensure Calculation is registered with SQLModel
-        from src.models import Calculation, User
-        from sqlmodel import SQLModel
-        
         # Use the correct metadata with all registered models
+        from sqlmodel import SQLModel
         SQLModel.metadata.create_all(self.engine)
         # Note: _migrate_tables() is disabled as all tables are created properly by SQLAlchemy/SQLModel
         # If you need to add columns in the future, use alembic migrations instead
@@ -106,8 +103,6 @@ class DatabaseManager:
             Tuple of (success: bool, calculation: Calculation or None, error_message: str or None)
         """
         try:
-            from src.models import Calculation, classify_process
-            
             # Auto-classify before saving
             if 'roi_percentage_first_year' in calculation_data and 'payback_period_months' in calculation_data:
                 roi = calculation_data['roi_percentage_first_year']
@@ -162,7 +157,6 @@ class DatabaseManager:
                     logger.debug(f"Cache hit for all_calculations (user_id={user_id})")
                     return True, cached, None
             
-            from src.models import Calculation
             with Session(self.engine) as session:
                 try:
                     if user_id is None:
@@ -208,7 +202,6 @@ class DatabaseManager:
                     logger.debug(f"Cache hit for calculation {calc_id}")
                     return True, cached, None
             
-            from src.models import Calculation
             with Session(self.engine) as session:
                 try:
                     statement = select(Calculation).where(Calculation.id == calc_id)
@@ -244,7 +237,6 @@ class DatabaseManager:
             Tuple of (success: bool, calculation: Calculation or None, error_message: str or None)
         """
         try:
-            from src.models import Calculation, classify_process
             with Session(self.engine) as session:
                 try:
                     statement = select(Calculation).where(Calculation.id == calc_id)
@@ -296,7 +288,6 @@ class DatabaseManager:
             Tuple of (success: bool, error_message: str or None)
         """
         try:
-            from src.models import Calculation
             with Session(self.engine) as session:
                 try:
                     statement = select(Calculation).where(Calculation.id == calc_id)
@@ -328,32 +319,60 @@ class DatabaseManager:
     # ========== USER MANAGEMENT ==========
     def get_user_by_username(self, username: str) -> Optional["User"]:
         """Fetch user by username."""
-        from src.models import User
         with Session(self.engine) as session:
             statement = select(User).where(User.username == username)
             return session.exec(statement).first()
 
     def get_user_by_email(self, email: str) -> Optional["User"]:
         """Fetch user by email."""
-        from src.models import User
         with Session(self.engine) as session:
             statement = select(User).where(User.email == email)
             return session.exec(statement).first()
 
     def list_active_users(self) -> List["User"]:
         """Return all active users."""
-        from src.models import User
         with Session(self.engine) as session:
             statement = select(User).where(User.is_active == True)
             return list(session.exec(statement).all())
 
+    def list_users(self, include_inactive: bool = True) -> List["User"]:
+        """Return users; include inactive when requested."""
+        with Session(self.engine) as session:
+            stmt = select(User)
+            if not include_inactive:
+                stmt = stmt.where(User.is_active == True)
+            return list(session.exec(stmt).all())
+
+    def set_user_active(self, user_id: int, is_active: bool) -> bool:
+        """Activate/deactivate user."""
+        with Session(self.engine) as session:
+            user = session.get(User, user_id)
+            if not user:
+                return False
+            user.is_active = is_active
+            session.add(user)
+            session.commit()
+            return True
+
     def create_user(self, username: str, password_hash: str, email: str = "", is_admin: bool = False, is_active: bool = True) -> Optional["User"]:
-        """Create a new user if username not taken."""
-        from src.models import User
+        """
+        Create a new user and automatically create their personal workspace.
+        
+        Args:
+            username: Username
+            password_hash: Hashed password
+            email: Email address
+            is_admin: Admin flag
+            is_active: Active flag
+            
+        Returns:
+            User object or None if username already taken
+        """
         with Session(self.engine) as session:
             existing = session.exec(select(User).where(User.username == username)).first()
             if existing:
                 return existing
+            
             user = User(
                 username=username,
                 email=email,
@@ -364,7 +383,24 @@ class DatabaseManager:
             session.add(user)
             session.commit()
             session.refresh(user)
-            return user
+            
+            # Auto-create personal workspace for new user
+            user_id = user.id
+        
+        # Create personal workspace (outside session to avoid nested transaction)
+        success, workspace_id, error = self.create_workspace(
+            name=f"Workspace de {username}",
+            owner_id=user_id,
+            workspace_type="personal",
+            description="Workspace pessoal"
+        )
+        
+        if success:
+            logger.info(f"Personal workspace created for user {username} (workspace_id={workspace_id})")
+        else:
+            logger.error(f"Failed to create personal workspace for user {username}: {error}")
+        
+        return user
     
     @staticmethod
     def clear_cache() -> None:
@@ -401,7 +437,6 @@ class DatabaseManager:
 
     def update_user_password(self, username: str, hashed_password: str) -> bool:
         """Update user password by username."""
-        from src.models import User
         with Session(self.engine) as session:
             statement = select(User).where(User.username == username)
             user = session.exec(statement).first()
@@ -414,7 +449,6 @@ class DatabaseManager:
     
     def update_session_token(self, user_id: Optional[int], token: Optional[str], expiry: Optional['datetime']) -> bool:
         """Update user session token."""
-        from src.models import User
         if user_id is None:
             return False
         with Session(self.engine) as session:
@@ -429,7 +463,6 @@ class DatabaseManager:
     
     def get_user_by_session_token(self, token: str) -> Optional['User']:
         """Get user by session token and return detached user object."""
-        from src.models import User
         from sqlalchemy import inspect
         
         with Session(self.engine) as session:
@@ -450,6 +483,318 @@ class DatabaseManager:
             
             # Make a detached copy by accessing all attributes
             return user
+
+    # ==================== Workspace Methods ====================
+    
+    def create_workspace(self, name: str, owner_id: int, workspace_type: str = "shared", 
+                        description: Optional[str] = None) -> Tuple[bool, Optional[int], Optional[str]]:
+        """
+        Create a new workspace.
+        
+        Args:
+            name: Workspace name
+            owner_id: User ID of the owner
+            workspace_type: "personal" or "shared"
+            description: Optional description
+            
+        Returns:
+            Tuple of (success, workspace_id, error_message)
+        """
+        try:
+            import re
+            
+            # Generate slug from name
+            slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+            slug = f"{slug}-{owner_id}-{int(time.time())}"
+            
+            with Session(self.engine) as session:
+                workspace = Workspace(
+                    name=name,
+                    slug=slug,
+                    description=description,
+                    type=workspace_type,
+                    owner_id=owner_id,
+                    is_active=True
+                )
+                session.add(workspace)
+                session.commit()
+                session.refresh(workspace)
+                
+                logger.info(f"Workspace created: {workspace.name} (id={workspace.id}, type={workspace_type})")
+                return True, workspace.id, None
+                
+        except Exception as e:
+            error_msg = f"Failed to create workspace: {str(e)}"
+            logger.error(error_msg)
+            return False, None, error_msg
+    
+    def get_user_workspaces(self, user_id: int) -> List[Any]:
+        """
+        Get all workspaces accessible by a user (owned + member of).
+        
+        Args:
+            user_id: User ID
+            
+        Returns:
+            List of Workspace objects
+        """
+        try:
+            with Session(self.engine) as session:
+                # Get workspaces where user is owner
+                owned_stmt = select(Workspace).where(
+                    Workspace.owner_id == user_id,
+                    Workspace.is_active == True
+                )
+                owned = session.exec(owned_stmt).all()
+                
+                # Get workspaces where user is a member
+                member_stmt = select(Workspace).join(WorkspaceMember).where(
+                    WorkspaceMember.user_id == user_id,
+                    WorkspaceMember.is_active == True,
+                    Workspace.is_active == True
+                )
+                member_of = session.exec(member_stmt).all()
+                
+                # Combine and deduplicate
+                all_workspaces = list(owned) + [ws for ws in member_of if ws not in owned]
+                
+                logger.debug(f"User {user_id} has access to {len(all_workspaces)} workspaces")
+                return all_workspaces
+                
+        except Exception as e:
+            logger.error(f"Failed to get user workspaces: {str(e)}")
+            return []
+    
+    def get_workspace_by_id(self, workspace_id: int) -> Optional[Any]:
+        """Get workspace by ID."""
+        try:
+            with Session(self.engine) as session:
+                workspace = session.get(Workspace, workspace_id)
+                return workspace
+                
+        except Exception as e:
+            logger.error(f"Failed to get workspace: {str(e)}")
+            return None
+    
+    def update_workspace(self, workspace_id: int, name: Optional[str] = None, 
+                        description: Optional[str] = None) -> bool:
+        """Update workspace details."""
+        try:
+            with Session(self.engine) as session:
+                workspace = session.get(Workspace, workspace_id)
+                if not workspace:
+                    return False
+                
+                if name:
+                    workspace.name = name
+                if description is not None:
+                    workspace.description = description
+                    
+                workspace.updated_at = datetime.utcnow()
+                session.add(workspace)
+                session.commit()
+                
+                logger.info(f"Workspace {workspace_id} updated")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Failed to update workspace: {str(e)}")
+            return False
+    
+    def delete_workspace(self, workspace_id: int) -> bool:
+        """Soft delete a workspace (set is_active=False)."""
+        try:
+            with Session(self.engine) as session:
+                workspace = session.get(Workspace, workspace_id)
+                if not workspace:
+                    return False
+                
+                # Don't allow deleting personal workspaces
+                if workspace.type == "personal":
+                    logger.warning(f"Cannot delete personal workspace {workspace_id}")
+                    return False
+                
+                workspace.is_active = False
+                workspace.updated_at = datetime.utcnow()
+                session.add(workspace)
+                session.commit()
+                
+                logger.info(f"Workspace {workspace_id} deleted (soft)")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Failed to delete workspace: {str(e)}")
+            return False
+    
+    def add_workspace_member(self, workspace_id: int, user_id: int, role: str = "editor") -> bool:
+        """
+        Add a user as member to a workspace.
+        
+        Args:
+            workspace_id: Workspace ID
+            user_id: User ID to add
+            role: Role - "admin", "editor", or "viewer"
+            
+        Returns:
+            Success boolean
+        """
+        try:
+            with Session(self.engine) as session:
+                # Check if workspace is shared
+                workspace = session.get(Workspace, workspace_id)
+                if not workspace or workspace.type != "shared":
+                    logger.warning(f"Cannot add member to non-shared workspace {workspace_id}")
+                    return False
+                
+                # Check if already a member
+                existing = session.exec(
+                    select(WorkspaceMember).where(
+                        WorkspaceMember.workspace_id == workspace_id,
+                        WorkspaceMember.user_id == user_id
+                    )
+                ).first()
+                
+                if existing:
+                    if not existing.is_active:
+                        # Reactivate
+                        existing.is_active = True
+                        existing.role = role
+                        session.add(existing)
+                        session.commit()
+                        logger.info(f"Workspace member reactivated: user {user_id} in workspace {workspace_id}")
+                        return True
+                    else:
+                        logger.warning(f"User {user_id} already member of workspace {workspace_id}")
+                        return False
+                
+                # Add new member
+                member = WorkspaceMember(
+                    workspace_id=workspace_id,
+                    user_id=user_id,
+                    role=role,
+                    is_active=True
+                )
+                session.add(member)
+                session.commit()
+                
+                logger.info(f"Workspace member added: user {user_id} to workspace {workspace_id} as {role}")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Failed to add workspace member: {str(e)}")
+            return False
+    
+    def remove_workspace_member(self, workspace_id: int, user_id: int) -> bool:
+        """Remove a user from workspace (soft delete)."""
+        try:
+            with Session(self.engine) as session:
+                member = session.exec(
+                    select(WorkspaceMember).where(
+                        WorkspaceMember.workspace_id == workspace_id,
+                        WorkspaceMember.user_id == user_id
+                    )
+                ).first()
+                
+                if not member:
+                    return False
+                
+                member.is_active = False
+                session.add(member)
+                session.commit()
+                
+                logger.info(f"Workspace member removed: user {user_id} from workspace {workspace_id}")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Failed to remove workspace member: {str(e)}")
+            return False
+    
+    def get_workspace_members(self, workspace_id: int) -> List[Any]:
+        """Get all active members of a workspace."""
+        try:
+            with Session(self.engine) as session:
+                stmt = select(User, WorkspaceMember.role).join(
+                    WorkspaceMember,
+                    User.id == WorkspaceMember.user_id
+                ).where(
+                    WorkspaceMember.workspace_id == workspace_id,
+                    WorkspaceMember.is_active == True
+                )
+                results = session.exec(stmt).all()
+                
+                return results
+                
+        except Exception as e:
+            logger.error(f"Failed to get workspace members: {str(e)}")
+            return []
+    
+    def get_user_role_in_workspace(self, workspace_id: int, user_id: int) -> Optional[str]:
+        """
+        Get user's role in a workspace.
+        
+        Returns: "owner", "admin", "editor", "viewer", or None if not member
+        """
+        try:
+            with Session(self.engine) as session:
+                # Check if owner
+                workspace = session.get(Workspace, workspace_id)
+                if workspace and workspace.owner_id == user_id:
+                    return "owner"
+                
+                # Check member role
+                member = session.exec(
+                    select(WorkspaceMember).where(
+                        WorkspaceMember.workspace_id == workspace_id,
+                        WorkspaceMember.user_id == user_id,
+                        WorkspaceMember.is_active == True
+                    )
+                ).first()
+                
+                return member.role if member else None
+                
+        except Exception as e:
+            logger.error(f"Failed to get user role: {str(e)}")
+            return None
+    
+    def get_workspace_calculations(self, workspace_id: int) -> List["Calculation"]:
+        """Get all calculations in a workspace."""
+        try:
+            cache_key = f"workspace_calculations_{workspace_id}"
+            
+            # Check cache
+            cached = self._cache_manager.get(cache_key)
+            if cached is not None:
+                logger.info(f"Retrieved {len(cached)} calculations for workspace {workspace_id} from cache")
+                return cached
+            
+            with Session(self.engine) as session:
+                stmt = select(Calculation).where(
+                    Calculation.workspace_id == workspace_id
+                ).order_by(Calculation.created_at.desc())
+                
+                calculations = session.exec(stmt).all()
+                
+                # Cache the results
+                self._cache_manager.set(cache_key, calculations)
+                
+                logger.info(f"Retrieved {len(calculations)} calculations for workspace {workspace_id} from database")
+                return calculations
+                
+        except Exception as e:
+            logger.error(f"Failed to get workspace calculations: {str(e)}")
+            return []
+    
+    def get_user_by_email(self, email: str) -> Optional['User']:
+        """Get user by email."""
+        try:
+            with Session(self.engine) as session:
+                stmt = select(User).where(User.email == email)
+                user = session.exec(stmt).first()
+                return user
+                
+        except Exception as e:
+            logger.error(f"Failed to get user by email: {str(e)}")
+            return None
 
 
 

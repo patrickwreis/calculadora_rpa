@@ -34,8 +34,14 @@ class Calculation(SQLModel, table=True):
     __table_args__ = {"extend_existing": True}
     id: Optional[int] = Field(default=None, primary_key=True)
     
-    # User ownership (multi-tenant)
-    user_id: int = Field(default=1, index=True)  # Default to 1 for now (will be linked to User model later)
+    # Workspace isolation (SaaS multi-tenancy)
+    workspace_id: Optional[int] = Field(default=None, foreign_key="workspace.id", index=True)
+    
+    # Legacy user_id (will be migrated to workspace_id)
+    user_id: int = Field(default=1, index=True)
+    
+    # Audit: who created this calculation
+    created_by_user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)
     
     # Basic Information
     process_name: str

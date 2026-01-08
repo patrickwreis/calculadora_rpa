@@ -25,6 +25,11 @@ st.set_page_config(
 # Verifica token no banco de dados
 SessionManager.restore_session()
 
+# Workspace selector in sidebar (only for authenticated users)
+if "auth_user" in st.session_state and st.session_state.auth_user is not None:
+    from src.ui.workspace_selector import render_workspace_selector
+    render_workspace_selector()
+
 # Hide page navigation if not logged in
 if "auth_user" not in st.session_state or st.session_state.auth_user is None:
     st.markdown("""

@@ -25,6 +25,15 @@ if not require_auth(form_key="relatorios_login"):
 # Header com logout
 render_logout_button("relatorios")
 
+# Workspace selector in sidebar
+from src.ui.workspace_selector import ensure_workspace_selected, render_workspace_selector
+with st.sidebar:
+    st.markdown("---")
+    render_workspace_selector()
+    st.markdown("---")
+
+workspace_id = ensure_workspace_selected()
+
 
 def compute_efficiency(calc):
     """Return freed hours/month and freed FTE based on automation and exceptions."""
@@ -37,20 +46,16 @@ def compute_efficiency(calc):
     return freed_hours, freed_fte
 
 
-def load_data(user_id=None):
-    """Load calculations from database
+def load_data(workspace_id):
+    """Load calculations from workspace
     
     Args:
-        user_id: If provided, filter by user_id. None returns all calculations.
+        workspace_id: Workspace ID to load calculations from
     """
     try:
         db_manager = DatabaseManager()
-        success, calculations, error_msg = db_manager.get_all_calculations(user_id=user_id)
-        if success:
-            return calculations
-        else:
-            st.error(f"Erro ao carregar dados: {error_msg}")
-            return []
+        calculations = db_manager.get_workspace_calculations(workspace_id)
+        return calculations
     except Exception as e:
         st.error(f"Erro ao carregar dados: {str(e)}")
         return []
@@ -460,18 +465,10 @@ def main():
     
     st.title("📊 Relatórios")
     
-    # Get current user for filtering
-    current_user_id = st.session_state.get("auth_user_id", 1)
-    is_admin = st.session_state.get("auth_is_admin", False)
-    user_filter = None if is_admin else current_user_id
+    st.markdown("Análise completa dos **seus processos RPA** cadastrados neste espaço de trabalho")
     
-    if is_admin and user_filter is None:
-        st.markdown("Análise completa de **todos os processos RPA** cadastrados (Admin)")
-    else:
-        st.markdown("Análise completa dos **seus processos RPA** cadastrados")
-    
-    # Load data
-    calculations = load_data(user_id=user_filter)
+    # Load data from workspace
+    calculations = load_data(workspace_id)
     
     if not calculations:
         st.info("Nenhum processo cadastrado. Acesse 'Novo Processo' para começar.")
