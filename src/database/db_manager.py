@@ -83,60 +83,17 @@ class DatabaseManager:
         
         # Use the correct metadata with all registered models
         SQLModel.metadata.create_all(self.engine)
+        # Note: _migrate_tables() is disabled as all tables are created properly by SQLAlchemy/SQLModel
+        # If you need to add columns in the future, use alembic migrations instead
     
     def _migrate_tables(self):
-        """Add missing columns to existing tables"""
-        with self.engine.connect() as connection:
-            # Check which columns exist in 'calculation' table
-            cursor = connection.execute(text("PRAGMA table_info(calculation)"))
-            existing_columns = {row[1] for row in cursor.fetchall()}
-            
-            # Define columns to add to 'calculation' with defaults
-            columns_to_add = {
-                "department": "TEXT DEFAULT ''",
-                "complexity": "TEXT DEFAULT 'Média'",
-                "systems_quantity": "INTEGER DEFAULT 1",
-                "daily_transactions": "INTEGER DEFAULT 100",
-                "error_rate": "REAL DEFAULT 0.0",
-                "exception_rate": "REAL DEFAULT 0.0",
-                "maintenance_percentage": "REAL DEFAULT 10.0",
-                "infra_license_cost": "REAL DEFAULT 0.0",
-                "other_costs": "REAL DEFAULT 0.0",
-                "fines_avoided": "REAL DEFAULT 0.0",
-                "sql_savings": "REAL DEFAULT 0.0",
-                "user_id": "INTEGER DEFAULT 1",
-                "classification": "TEXT DEFAULT 'BAIXA PRIORIDADE'",
-            }
-            
-            # Add missing columns to 'calculation'
-            for col_name, col_def in columns_to_add.items():
-                if col_name not in existing_columns:
-                    try:
-                        connection.execute(text(f"ALTER TABLE calculation ADD COLUMN {col_name} {col_def}"))
-                        connection.commit()
-                    except Exception as e:
-                        print(f"Column {col_name} might already exist or error: {e}")
-
-            # Check which columns exist in 'user' table
-            cursor = connection.execute(text("PRAGMA table_info(user)"))
-            user_columns = {row[1] for row in cursor.fetchall()}
-            
-            # Add 'email' column to 'user' if it doesn't exist
-            if "email" not in user_columns:
-                try:
-                    connection.execute(text("ALTER TABLE user ADD COLUMN email TEXT DEFAULT 'unknown@localhost'"))
-                    connection.commit()
-                    print("✅ Email column added to user table")
-                except Exception as e:
-                    print(f"Could not add email column: {e}")
-
-        # Ensure users table exists (SQLModel create_all covers new models, but we also guard here)
-        with self.engine.connect() as connection:
-            try:
-                connection.execute(text("SELECT 1 FROM users LIMIT 1"))
-            except Exception:
-                from sqlmodel import SQLModel
-                SQLModel.metadata.create_all(self.engine)
+        """Deprecated: Use alembic migrations for schema changes instead.
+        
+        This method was used for SQLite migrations and is no longer needed
+        since we're using SQLAlchemy/SQLModel with PostgreSQL which creates
+        all tables automatically.
+        """
+        pass
     
     def save_calculation(self, calculation_data: dict) -> Tuple[bool, Optional["Calculation"], Optional[str]]:
         """

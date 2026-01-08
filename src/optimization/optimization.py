@@ -69,19 +69,13 @@ class DatabaseOptimizer:
     def analyze_database_performance(engine):
         """Analyze database performance metrics"""
         try:
-            with engine.connect() as conn:
-                # SQLite PRAGMA commands for optimization
-                conn.execute("PRAGMA query_only = OFF")
-                conn.execute("PRAGMA synchronous = NORMAL")  # Balance safety and performance
-                conn.execute("PRAGMA journal_mode = WAL")     # Write-Ahead Logging for concurrency
-                conn.execute("PRAGMA cache_size = -64000")    # 64MB cache
-                conn.execute("PRAGMA temp_store = MEMORY")    # Use memory for temp tables
-                
-                logger.info("Database performance optimizations applied")
-                return True
+            # Note: SQLite PRAGMA commands are not needed for PostgreSQL
+            # PostgreSQL handles performance optimization automatically
+            logger.info("Database performance optimizations are handled by PostgreSQL")
+            return True
                 
         except Exception as e:
-            logger.warning(f"Error applying performance optimizations: {str(e)}")
+            logger.warning(f"Error with database optimization: {str(e)}")
             return False
 
 
