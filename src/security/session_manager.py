@@ -76,11 +76,13 @@ class SessionManager:
             
             if not user:
                 logger.warning(f"  User not found for token: {token[:20]}...")
+                SessionManager.clear_session()
                 logger.debug("=" * 80)
                 return False
             
             if not user.is_active:
                 logger.warning(f"  User not active: {user.username}")
+                SessionManager.clear_session()
                 logger.debug("=" * 80)
                 return False
             
