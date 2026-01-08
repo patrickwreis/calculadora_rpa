@@ -243,39 +243,8 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
     
     with tab3:
         st.markdown("#### Recuperar acesso à sua conta")
-        recovery_user = st.text_input("👤 Digite seu usuário", key=f"{form_key}_recovery_user", placeholder="seu usuário aqui")
-        recovery_email = st.text_input("📧 Digite seu email", key=f"{form_key}_recovery_email", placeholder="seu@email.com")
-        
-        if st.button("🔐 Recuperar Senha", width='stretch', key=f"{form_key}_recovery_btn", type="primary"):
-            # Rate limiting for password reset
-            reset_limiter = get_password_reset_limiter()
-            if reset_limiter.is_rate_limited(recovery_email):
-                reset_time = reset_limiter.get_reset_time(recovery_email)
-                st.error(f"❌ Muitas tentativas. Tente novamente em {reset_time} segundos.")
-            elif not recovery_user or not recovery_email:
-                st.error("❌ Usuário e email são obrigatórios")
-            else:
-                reset_limiter.record_attempt(recovery_email)
-                user = db.get_user_by_username(recovery_user)
-                if not user:
-                    st.error("❌ Usuário não encontrado")
-                elif user.email != recovery_email:
-                    st.error("❌ Email não corresponde ao usuário")
-                else:
-                    # Gerar senha temporária e enviar email
-                    import random
-                    import string
-                    temp_pass = "".join(random.choices(string.ascii_letters + string.digits, k=8))
-                    db.update_user_password(recovery_user, hash_password(temp_pass))
-                    email_sent = send_password_reset_email(user.email, recovery_user, temp_pass)
-                    if email_sent:
-                        st.success("✅ Email SMTP enviado com a senha temporária.")
-                    else:
-                        st.success("✅ Senha temporária gerada!")
-                        st.code(temp_pass, language="text")
-                        st.info("Email não foi enviado, mas a senha foi alterada. Use a senha acima.")
-
-                    st.warning("⚠️ **Importante:**\n- Faça login com a senha temporária (se aplicada)\n- Altere para uma senha segura após entrar")
+        st.warning("⚠️ **Funcionalidade temporariamente indisponível**\n\nA recuperação de senha será habilitada assim que um servidor de email for configurado. Entre em contato com o administrador para redefinir sua senha.")
+        st.markdown("\n---\n")
     
     st.divider()
     st.markdown("""
