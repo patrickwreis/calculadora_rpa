@@ -169,7 +169,7 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
     st.divider()
     
     # Use tabs for better organization
-    tab1, tab2, tab3 = st.tabs(["🔑 Login", "📝 Registrar", "🔄 Recuperar Senha"])
+    tab1, tab2 = st.tabs(["🔑 Login", "📝 Registrar"])
     
     with tab1:
         st.markdown("#### Entre com sua conta")
@@ -240,11 +240,6 @@ def require_auth(form_key: str = "login_form", db_manager: Optional[DatabaseMana
                         st.info(f"🎉 Bem-vindo, **{new_username}**! Agora faça login acima.")
                     except Exception as e:
                         st.error(f"❌ Erro ao criar conta: {str(e)}")
-    
-    with tab3:
-        st.markdown("#### Recuperar acesso à sua conta")
-        st.warning("⚠️ **Funcionalidade temporariamente indisponível**\n\nA recuperação de senha será habilitada assim que um servidor de email for configurado. Entre em contato com o administrador para redefinir sua senha.")
-        st.markdown("\n---\n")
     
     st.divider()
     st.markdown("""
