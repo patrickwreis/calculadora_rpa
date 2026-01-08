@@ -2,7 +2,7 @@
 """Workspace selector component for sidebar"""
 import streamlit as st
 from typing import Optional
-from src.database.db_manager import get_database_manager
+from src.database.db_manager import get_database_manager, DatabaseManager
 
 
 def render_workspace_selector() -> Optional[int]:
@@ -18,6 +18,10 @@ def render_workspace_selector() -> Optional[int]:
     
     user_id = st.session_state.auth_user_id
     db = get_database_manager()
+
+    # Fallback para instâncias antigas em cache que não possuam os métodos novos
+    if not hasattr(db, "get_user_workspaces"):
+        db = DatabaseManager()
     
     # Get all user workspaces
     workspaces = db.get_user_workspaces(user_id)
