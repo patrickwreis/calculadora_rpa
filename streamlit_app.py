@@ -30,6 +30,18 @@ if "auth_user" in st.session_state and st.session_state.auth_user is not None:
     from src.ui.workspace_selector import render_workspace_selector
     render_workspace_selector()
 
+# Oculta página de administração para não-admins (apenas remove do menu)
+if not st.session_state.get("auth_is_admin", False):
+    st.markdown(
+        """
+        <style>
+        /* Hide admin page entry in sidebar nav for non-admin users */
+        [data-testid="stSidebarNav"] li a[href$="6_Administracao_Usuarios"] { display: none !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # Hide page navigation if not logged in
 if "auth_user" not in st.session_state or st.session_state.auth_user is None:
     st.markdown("""
