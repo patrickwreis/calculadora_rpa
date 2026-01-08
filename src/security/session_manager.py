@@ -43,14 +43,6 @@ class SessionManager:
         st.session_state.auth_session_time = datetime.now().isoformat()
         st.session_state.persistent_session_token = token
 
-        # Persiste também nos query params para sobreviver a F5
-        try:
-            qp = dict(st.query_params)
-            qp["session_token"] = token
-            st.query_params = qp
-        except Exception as e:
-            logger.warning(f"Failed to set query params: {e}")
-        
         msg = f"SESSION SAVED: user={username} (id={user_id}), token={token[:20]}..., expiry={expiry}"
         logger.info(msg)
         
@@ -64,8 +56,6 @@ class SessionManager:
         logger.debug(f"  session_state has persistent_session_token: {'persistent_session_token' in st.session_state}")
         logger.debug(f"  session_state has auth_user: {'auth_user' in st.session_state}")
         qp = dict(st.query_params)
-        logger.debug(f"  query_params keys: {list(qp.keys())}")
-        
         token = None
         
         if "persistent_session_token" in st.session_state:
@@ -74,16 +64,6 @@ class SessionManager:
                 logger.debug(f"  Found token in session_state: {token[:20]}...")
             else:
                 logger.debug("  Token in session_state is empty")
-        
-        # Tenta query params (sobrevive a F5 se a URL mantiver o token)
-        elif "session_token" in qp:
-            token = qp.get("session_token")
-            if isinstance(token, list):
-                token = token[0]
-            if token:
-                logger.debug(f"  Found token in query_params: {token[:20]}...")
-            else:
-                logger.debug("  Token in query_params is empty")
         
         if not token:
             logger.debug("  No token found - returning False")
@@ -155,11 +135,7 @@ class SessionManager:
 
         logger.info("SESSION COMPLETELY CLEARED")
 
-        # Limpa query params para evitar token órfão na URL
-        try:
-            st.query_params = {}
-        except Exception as e:
-            logger.warning(f"Failed to clear query params: {e}")
+        # Não usamos query params para token; nada a limpar aqui
 
     
     @staticmethod
